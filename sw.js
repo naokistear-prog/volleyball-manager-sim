@@ -1,4 +1,4 @@
-/* 女子バレー部監督シム v13.6 — Service Worker（フェーズ4・PWA化）
+/* 女子バレー部監督シム v13.9 — Service Worker（フェーズ4・PWA化）
    役割：インストールとオフライン起動のためのキャッシュ。
    範囲はこのフォルダ（Service Worker のスコープ＝同フォルダ）に限定し、
    同フォルダの v13 HTML本体・マニフェスト・アイコンのみを扱う。
@@ -7,7 +7,7 @@
    ページ側がユーザーに通知してから SKIP_WAITING で切り替える。 */
 'use strict';
 
-var CACHE_NAME = 'vbcoach-v136-1';
+var CACHE_NAME = 'vbcoach-v1310-1';
 var CORE = [
   './volleyball-sim-v13.html',
   './manifest.json',

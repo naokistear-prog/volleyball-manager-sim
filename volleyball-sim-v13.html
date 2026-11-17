@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>女子バレー部監督シム v13.6</title>
+<title>女子バレー部監督シム v13.10</title>
 <style>
 
 :root{--bg:#22264d;--panel:#f6f1dc;--ink:#1a1a1a;--team:#d8343a;--accent:#ffd84a;--dark:#11132b}
@@ -375,6 +375,8 @@ details.fold[open]>summary::after{content:' ▲'}
 .pcard{background:#fffdf5;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:8px;cursor:pointer;position:relative}
 .pcard:hover{background:#fff3d6}
 .pcard.ret{opacity:.6}
+.pcard.genius{border-color:#b8860b;box-shadow:0 0 0 3px #ffd84a,3px 3px 0 #000;background:#fffbe8}
+.genius-badge{display:inline-block;background:linear-gradient(180deg,#ffe97a,#f5c400);border:2px solid #b8860b;border-radius:10px;color:#5a3d00;font-weight:700;font-size:12px;padding:0 6px;margin-left:4px;white-space:nowrap}
 .pc-top{display:flex;gap:8px;align-items:flex-start}
 .pc-face{flex:none;line-height:0}
 .pc-face .pt-face svg{width:84px;height:auto}
@@ -465,6 +467,33 @@ label.fe input[type=range]{width:170px;vertical-align:middle}
 "use strict";
 /* v13正本。直接編集するファイルです（src/data/*.json からの自動生成には戻らない）。
    v12-4 の凍結コピーは v12-4-frozen.html に保存済み。 */
+/* ===== v13.9 変更履歴（2026-11-17） =====
+   天才型の選手を追加（p.genius フラグ）。新入生（genRecruits）・スカウト（genProspects）の
+   約5%が天才型。初期メンバー・ライバル校には付けない。経験値は addExp() で×1.5（練習・試合・
+   合宿・イベントすべて。addExp が唯一の経験値付与口）。特能は毎月の習得率・昇格率×2、
+   特訓成功率×2、覚醒（awakenSkill）の金特化率 0.5→0.85・覚醒イベントの発生率 0.5→0.8、
+   強化合宿の習得率 0.12→0.24。表示は選手カード（金枠＋✨天才）・選手詳細・入部選考・
+   スカウト（2回目視察で「✨天才の片鱗」）・入部決定表。旧セーブは ensureV139Genius() で
+   genius=false を補完（SAVE_VERSION・セーブキーは v13.8 のまま。音は入れない）。 */
+/* ===== v13.8 変更履歴（2026-11-17） =====
+   顔をBイラスト寄りに描き直し（faceSVG() の描画のみ。genFace() のデータ形式は不変、
+   SAVE_VERSION・セーブキーは v13.7 のまま。音は入れない）。
+   目：v13.7 と同じ大きさ（1.27倍に拡大する案はユーザーの最終指定で取り消し。0〜10%小さくてもよい範囲内）。
+   白ハイライト＋星型キラキラ、太い上まつげ、虹彩グラデーション（linearGradient）は残す。
+   髪：ツヤの帯と毛束の線を追加、前髪の輪郭を滑らかに。肌：チークを大きく・濃く、あご下・髪下に薄い陰影。
+   あご：sharp（とがったあご）は生成しない・描画も丸あごに寄せる（round/oval/square のみ）。
+   顔：丸く・頭大きめに（facePath の制御点を丸み寄りに）。輪郭：目の周り・髪・顔・Vネック・
+   ユニフォームに太い黒の縁取り（#1a1a1a、幅2.2〜3.5）を維持・強調。
+   構図：全身 viewBox を '26 8 148 172' に（頭がフレームの約72%・顔中心が約42%・肩が下に見える
+   Bイラストの構図）。頭だけcrop を '30 10 140 chinY-14' に（あごが切れない・顔が中央）。
+   .av の高さ計算も新cropのアスペクトに合わせる。 */
+/* ===== v13.7 変更履歴（2026-11-17） =====
+   入部ルートの整理：入部は新入生（入部選考）とスカウトだけ。キャラメイクでの新規入部と
+   転校生イベントを削除。キャラメイクは既存選手の「顔と名前を変える」編集専用になり、
+   選手詳細からのみ開ける（ホームナビ・タイトル・選手一覧のボタンは削除）。
+   既存選手の顔を新形式に統一：セーブ読み込み時の移行で、鼻・口・眉の9項目が無い顔は
+   選手IDから決まる決定的なシードでランダム生成して埋める（肌・髪・目など既存項目は不変。
+   決定的シードなので再読み込みでも同じ顔＝冪等）。セーブキー・SAVE_VERSION は v13.6 のまま。音は入れない。 */
 /* ===== v13.6 変更履歴（2026-11-17） =====
    8月合宿を12月に移動し「冬合宿」に改名（開始日 12/1、4日間。テスト期間 12/7〜11・クリスマス 12/24・
    春高本戦 1/5 と被らないよう 12/1 を選択。8月1日には合宿が起きない）。内容・コスト（通常100P／強化250P）・
@@ -545,7 +574,7 @@ label.fe input[type=range]{width:170px;vertical-align:middle}
      全画面の完全スクリーンリーダー対応は v13 の必須とせず、残りは v14 の課題（CHANGELOG参照）。
      音は入れない。 */
 const DATA = { "economy": { "FACILITIES": [{ "id": "gym", "name": "体育館の優先使用権", "icon": "🏟️", "price": 500, "lv": 5, "desc": "「体育館かぶり」が起きなくなる。体育館レベル+5" }, { "id": "clubroom", "name": "部室改装", "icon": "🛋️", "price": 200, "desc": "調子が下がりにくくなり、悪いことマスも起きにくくなる" }, { "id": "trainer", "name": "トレーナー契約", "icon": "🩺", "price": 350, "annual": true, "desc": "ケガの確率 -30%（契約した年度のみ有効・毎年更新）" }], "EQUIPS": [{ "id": "ballmachine", "name": "ボールマシン", "icon": "⚙️", "price": 1000, "max": 30, "lv": 3, "kind": "receive", "up": "強打レシーブ", "desc": "「強打レシーブ」カードが出るようになる" }, { "id": "target", "name": "サーブターゲット", "icon": "🎯", "price": 1000, "max": 30, "lv": 3, "kind": "serve", "up": "狙い打ちサーブ", "desc": "「狙い打ちサーブ」カードが出るようになる" }, { "id": "weight", "name": "ウエイトセット", "icon": "🏋️", "price": 1000, "max": 30, "lv": 3, "kind": "train", "up": "ウエイト", "desc": "「ウエイト」カードが出るようになる" }, { "id": "icebath", "name": "アイスバス", "icon": "🧊", "price": 1000, "max": 30, "lv": 3, "kind": "rest", "up": "回復ケア", "desc": "「回復ケア」カードが出るようになる。休養の回復量+50%" }, { "id": "blockmachine", "name": "ブロックマシン", "icon": "🧱", "price": 2000, "max": 40, "lv": 4, "kind": "block", "up": "ブロック強化練", "desc": "「ブロック強化練」カードが出るようになる" }, { "id": "quickmachine", "name": "速攻マシン", "icon": "⚡", "price": 2000, "max": 40, "lv": 4, "kind": "spike", "up": "速攻練習", "desc": "「速攻練習」カードが出るようになる" }, { "id": "tosstrainer", "name": "トストレーナー", "icon": "🙌", "price": 2000, "max": 40, "lv": 4, "kind": "toss", "up": "高速トス練", "desc": "「高速トス練」カードが出るようになる" }, { "id": "video", "name": "ビデオセット", "icon": "📹", "price": 2000, "max": 40, "lv": 4, "kind": "mental", "up": "映像分析", "desc": "「映像分析」カードが出る。練習試合の経験値+20%・試合中に相手の特殊能力が見える" }], "ITEMS": { "sch_up": { "name": "スケジュール強化指南書", "icon": "📘", "price": 300, "cat": "進行", "desc": "手札の数字を全部+1（最大5。練習以外は1のまま）" }, "sch_down": { "name": "スケジュール緩和指南書", "icon": "📗", "price": 300, "cat": "進行", "desc": "手札の数字を全部-1（最小1）" }, "sch_max": { "name": "スケジュール強化極意書", "icon": "📙", "price": 500, "cat": "進行", "desc": "手札の数字が全部5になる（練習以外は1のまま）" }, "sch_min": { "name": "スケジュール緩和極意書", "icon": "📓", "price": 300, "cat": "進行", "desc": "手札の数字が全部1になる" }, "sch_change": { "name": "スケジュール変更手帳", "icon": "📒", "price": 500, "cat": "進行", "desc": "手札をすべて入れ替える" }, "positive": { "name": "ポジティブシンキング", "icon": "🌈", "price": 500, "cat": "マス", "desc": "見えている一番近い悪いことマスを良いことマスに変える" }, "reverse": { "name": "逆転の発想のススメ", "icon": "🔄", "price": 300, "cat": "マス", "desc": "見えている悪いことマスと良いことマスをすべて入れ替える" }, "onigiri": { "name": "おにぎり", "icon": "🍙", "price": 600, "cat": "回復", "desc": "全員の体力+1段階" }, "bento": { "name": "まんぷく弁当", "icon": "🍱", "price": 1600, "cat": "回復", "desc": "全員の体力を最大まで回復" }, "praise": { "name": "お褒めの言葉", "icon": "👏", "price": 700, "cat": "調子", "desc": "1人の調子が1段階アップ", "target": "player" }, "jibun": { "name": "自分探しの本", "icon": "🔮", "price": 400, "cat": "性格", "desc": "1人の性格をランダムに変える", "target": "player" }, "wax": { "name": "床用ワックス", "icon": "🧴", "price": 400, "cat": "体育館", "desc": "体育館レベル+1（累計17個まで）" }, "repair": { "name": "修理キット", "icon": "🧰", "price": 1800, "cat": "体育館", "desc": "器材1つの耐久度を全回復", "target": "equip" }, "resume": { "name": "新入生の履歴書", "icon": "📄", "price": 2000, "cat": "スカウト", "desc": "今年のスカウト候補+2人（10/1のスカウトより前に使う）" }, "ticket": { "name": "器材のお楽しみ券", "icon": "🎟", "price": 1600, "cat": "体育館", "desc": "持っていない器材を1つもらえる（1,000Pの器材がそろっていれば2,000Pの器材が確定）" } }, "STAT_ITEMS": [["spike", "練習用ボール（攻撃）", "🏐", 1500], ["jump", "スパイクシューズ", "👟", 1500], ["receive", "サポーター", "🦵", 1200], ["serve", "サーブ用ボール", "🎾", 1200], ["toss", "トス用ボール", "🟡", 1200], ["block", "ブロック用パッド", "🧤", 1200], ["stamina", "スポーツドリンク", "🥤", 800], ["mental", "メンタル本", "📕", 800]] }, "lines": { "_説明": "性格ごとのセリフ。場面ごとに複数あるときはランダム。{name}=本人の苗字、{school}=学校の略称", "明るい": { "join": ["{school}でバレーできるの、すっごく楽しみです！"], "score": ["よっしゃー！", "ナイスー！", "いぇーい！"], "block": ["止めたー！", "壁だよっ！"], "ace": ["決まったー！", "サーブ最高！"], "timeout": ["まだまだいけるよ！", "笑っていこう！"], "win": ["みんなのおかげだよ！ありがとう！", "勝ったー！最高！"], "lose": ["悔しいけど、次は絶対勝とうね！"], "awake": ["なんか今日、体が軽い！"], "skill": ["できた！新しい技、できたよ！"], "retire": ["最高の3年間だった！後輩たち、頼んだよ！"], "grad": ["このチームでバレーできて、本当に幸せでした！"] }, "まじめ": { "join": ["一生懸命がんばります。よろしくお願いします"], "score": ["よし…！", "いい形でした"], "block": ["読み通りです"], "ace": ["狙い通りです"], "timeout": ["一本ずつ、落ち着いて取り返しましょう"], "win": ["練習の成果が出ました"], "lose": ["課題が見えました。明日からまた練習します"], "awake": ["積み重ねが、少し形になってきました"], "skill": ["ようやく身につきました"], "retire": ["後輩たちには、基本を大切にしてほしいです"], "grad": ["監督、3年間ご指導ありがとうございました"] }, "負けず嫌い": { "join": ["誰にも負けません。レギュラー取ります"], "score": ["どうだ！", "まだまだ！"], "block": ["打たせない！"], "ace": ["これが実力！"], "timeout": ["ここからひっくり返す！"], "win": ["当然の結果！次も勝つ！"], "lose": ["…悔しい。絶対にやり返す"], "awake": ["負けたくない気持ちが、力になった"], "skill": ["これで誰にも負けない！"], "retire": ["全国の舞台、後輩に託す。絶対行けよ！"], "grad": ["負けず嫌いでよかった。おかげで強くなれた"] }, "マイペース": { "join": ["のんびりがんばります〜"], "score": ["お〜、入った〜", "いい感じ〜"], "block": ["あ、止まった〜"], "ace": ["ラッキ〜"], "timeout": ["ゆっくり深呼吸しよ〜"], "win": ["勝っちゃった〜。おなかすいた〜"], "lose": ["まぁ、次があるよ〜"], "awake": ["なんか、コツつかんだかも〜"], "skill": ["あれ、できるようになってる〜"], "retire": ["楽しかったな〜。みんなありがと〜"], "grad": ["ここでの時間、ずっと忘れないと思う〜"] }, "内気": { "join": ["よ、よろしくお願いします…がんばります…"], "score": ["や、やった…！", "決まった…！"], "block": ["と、止められた…！"], "ace": ["は、入った…！"], "timeout": ["み、みんな…まだ大丈夫…！"], "win": ["勝てて…うれしいです…"], "lose": ["…つ、次はもっと役に立ちます"], "awake": ["少しだけ…自信がつきました"], "skill": ["わたしにも…できました…！"], "retire": ["このチームに入って…本当によかった…"], "grad": ["バレー部で、勇気をもらいました。ありがとうございました"] }, "お調子者": { "join": ["エース候補、参上〜！よろしくっ！"], "score": ["見た？今の見た？", "わたし天才〜！"], "block": ["ドシャット〜！"], "ace": ["サービスエース、いただきっ！"], "timeout": ["大丈夫、わたしがいるじゃん！"], "win": ["今日のヒーローはわたしってことで！"], "lose": ["ありゃ〜…次は本気出す！"], "awake": ["ついに本気モード、来ちゃった？"], "skill": ["新必殺技、完成〜！"], "retire": ["伝説はここまで！…いや、後輩が続けてくれるか！"], "grad": ["笑ってばっかりの3年間、最高だった！"] } }, "match": { "TACTICS": { "balance": { "name": "バランス", "desc": "特に偏りなし" }, "quick": { "name": "速攻重視", "desc": "ミドルの速攻が増え、ブロックを振る。ミスが少し増える" }, "ace": { "name": "エースに集める", "desc": "一番のアタッカーに託す。読まれてブロックが付きやすい" }, "serve": { "name": "サーブで攻める", "desc": "強気のサーブで崩す。サーブミスも増える" }, "defense": { "name": "守備重視", "desc": "拾ってつなぐ。ミスは減るが決定力は下がる" } }, "LINEUP_MODES": { "best": { "name": "ベストメンバー", "desc": "試合用。能力が一番高い7人" }, "auto": { "name": "おまかせ", "desc": "試合と育成の中間。1年生を最低1人は起用" }, "youth": { "name": "1・2年優先", "desc": "育成用。3年生は控えに回しやすい" } } }, "modifiers": { "_説明": "試合中の補正の定義。stat は能力（spike/jump/block/receive/serve/toss/stamina/mental）か all。v は倍率の上乗せ（0.03 = +3%）。when は発動条件（src/core/modifiers.ts の WHEN を参照）", "captain": { "OH": { "name": "エースの意地", "desc": "終盤の接戦・セットを先行されているとき、チームのスパイク+3%", "mods": [{ "stat": "spike", "v": 0.03, "when": "clutchOrBehind" }] }, "MB": { "name": "壁の統率", "desc": "チームのブロック+3%", "mods": [{ "stat": "block", "v": 0.03, "when": "always" }] }, "OP": { "name": "点取り屋", "desc": "どちらかが20点以降、チームのスパイク+3%", "mods": [{ "stat": "spike", "v": 0.03, "when": "late20" }] }, "S": { "name": "司令塔", "desc": "チームのトス+3%", "mods": [{ "stat": "toss", "v": 0.03, "when": "always" }] }, "L": { "name": "守りの要", "desc": "チームのレシーブ+3%（連続失点中は+6%）", "mods": [{ "stat": "receive", "v": 0.03, "when": "notOppRun2" }, { "stat": "receive", "v": 0.06, "when": "oppRun2" }] } }, "captainSeniorMult": 1.5, "instructions": { "calm": { "name": "落ち着いていこう", "stat": "mental", "v": 0.06, "desc": "メンタル+6%・ミス-20%" }, "serve": { "name": "サーブで崩せ", "stat": "serve", "v": 0.08, "desc": "サーブ+8%・エース率アップ（サーブミス少し増）" }, "block": { "name": "ブロック、しっかり締めて", "stat": "block", "v": 0.05, "desc": "ブロック+5%（後ろのディグは少し手薄に）" }, "dig": { "name": "まず1本拾おう", "stat": "receive", "v": 0.05, "desc": "レシーブ+5%" }, "ace": { "name": "エースに集めろ", "stat": null, "v": 0.08, "desc": "エースに集中・威力+8%（ブロックが付きやすい）" }, "quick": { "name": "速攻を使え", "stat": null, "v": 0.05, "desc": "速攻が増え決定率+5%（乱れたトスでミス増）" } }, "instructionLength": 5, "counter": { "ace": "block", "quick": "block", "serve": "dig", "defense": "ace", "balance": "calm" }, "team": { "timeout": { "name": "タイムアウトで立て直し", "stat": "all", "v": 0.04 }, "run": { "name": "連続得点の勢い", "stat": "all", "v": 0.03, "when": "ownRun3" }, "mood": { "name": "チームの雰囲気（キャプテン・ムードメーカー）", "stat": "all" } }, "player": [{ "skill": "clutch", "stat": "all", "v": [0.04, 0.08], "when": "clutch" }, { "skill": "honban", "stat": "all", "v": [0.04, 0.08], "when": "big" }, { "skill": "gyakkyo", "stat": "all", "v": [0.04, 0.08], "when": "behind" }, { "red": "nomi", "stat": "all", "v": -0.07, "when": "clutch" }, { "red": "nomi", "stat": "all", "v": -0.05, "when": "bigNotClutch" }, { "red": "slow", "stat": "all", "v": -0.06, "when": "set1" }] }, "names": { "LAST_NAMES": ["佐藤", "鈴木", "高橋", "田中", "伊藤", "渡辺", "山本", "中村", "小林", "加藤", "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "林", "斎藤", "清水", "山崎", "森", "池田", "橋本", "阿部", "石川", "山下", "中島", "石井", "小川", "前田", "岡田", "長谷川", "藤田", "後藤", "近藤", "村上", "遠藤", "青木", "坂本", "斉藤", "福田", "太田", "西村", "藤井", "金子", "岡本", "藤原", "中野", "三浦", "原田", "中川", "松田", "竹内", "小野", "田村", "中山", "和田", "石田", "森田", "上田", "原", "内田", "柴田", "酒井", "宮崎", "横山", "高木", "安藤", "宮本", "大野", "小島", "谷口", "工藤", "高田", "丸山", "今井", "河野", "藤本", "村田", "武田", "上野", "杉山", "増田", "平野", "大塚", "千葉", "久保", "松井", "小山", "岩崎", "桜井", "野口", "松尾", "菅原", "木下", "野村", "菊地", "佐野", "大西"], "FIRST_NAMES": ["陽菜", "結衣", "美咲", "葵", "さくら", "凛", "莉子", "芽依", "優奈", "愛莉", "彩花", "花音", "心春", "結菜", "美羽", "七海", "真央", "ひなた", "楓", "杏", "柚希", "琴音", "日向", "紗希", "遥", "美月", "沙耶", "千尋", "詩織", "萌", "彩乃", "朱里", "茜", "菜々子", "瑞希", "真由", "奈緒", "舞", "由衣", "紬", "藍", "澪", "莉央", "心愛", "咲良", "乃愛", "未来", "夏美", "千夏", "友梨", "早紀", "亜美", "恵", "麻衣", "梨花", "絵里", "みなみ", "春香", "明日香", "若菜", "美優", "優花", "芹奈", "来実", "一華", "陽葵", "実花", "光", "鈴", "穂乃果", "環", "小春", "彩", "希", "梓", "雫", "晴香", "日菜子", "佳奈", "莉緒", "桃子", "真琴", "渚", "瞳", "綾", "香澄", "帆夏", "茉央", "伊織", "朋美", "沙織", "美桜", "心", "華", "汐里", "明里", "美来", "灯", "梢", "文香"], "MALE_NAMES": ["翔太", "大輝", "蓮", "悠斗", "陸", "颯太", "湊", "健太"], "SCHOOL_PREFIX": ["青葉", "桜ヶ丘", "星陵", "光明", "東雲", "白鷺", "若葉", "北条", "南陽", "西山", "朝日", "緑ヶ丘", "清風", "明星", "翔陽", "鳳凰", "大和", "飛鳥", "高嶺", "紫苑", "常盤", "葛城", "春日", "月島", "霞ヶ浦", "湊", "千里", "藤ヶ谷", "双葉", "銀河", "白百合", "聖蘭", "聖マリア", "黎明", "蒼穹", "旭", "日進", "栄光", "創成", "泉", "柏木", "松陰", "竹園", "梅里", "楓", "椿", "渚", "岬", "峰", "瑞穂", "長浜", "宮下", "北陵", "南稜", "東邦", "西都", "中央", "城南", "城北", "臨海"], "SCHOOL_SUFFIX": [{ "name": "高校", "tier": "normal" }, { "name": "県立高校", "tier": "weak" }, { "name": "商業高校", "tier": "normal" }, { "name": "工業高校", "tier": "weak" }, { "name": "女子高校", "tier": "normal" }, { "name": "学園", "tier": "strong" }, { "name": "学院", "tier": "strong" }, { "name": "女学院", "tier": "strong" }, { "name": "大学附属", "tier": "elite" }, { "name": "国際高校", "tier": "normal" }, { "name": "第一高校", "tier": "normal" }, { "name": "総合高校", "tier": "weak" }], "TEAM_NICKNAMES": ["Wings", "Falcons", "Phoenix", "Swallows", "Blossoms", "Stars", "Waves", "Breeze", "Comets", "Tigers", "Lynx", "Spikers", "Flames", "Aurora", "Rainbows", "Suns", "Angels", "Queens", "Hawks", "Doves"], "MY_SCHOOL_CANDIDATES": [["県立青葉台高校", "Aoba Leaves"], ["県立みなと坂高校", "Minato Waves"], ["県立桜ヶ丘高校", "Sakura Blossoms"], ["県立北条高校", "Hojo Falcons"], ["県立若葉高校", "Wakaba Sprouts"], ["県立白鷺高校", "Shirasagi Wings"], ["県立朝日野高校", "Asahino Suns"], ["県立風見高校", "Kazami Breeze"]], "PREFECTURES": ["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島", "茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川", "新潟", "富山", "石川", "福井", "山梨", "長野", "岐阜", "静岡", "愛知", "三重", "滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山", "鳥取", "島根", "岡山", "広島", "山口", "徳島", "香川", "愛媛", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"] }, "people": { "JOBS": { "vleague": { "name": "実業団（Vリーグ）入り", "icon": "🏐", "desc": "赤特を消す／数日間を練習ボーナスに／調子アップ／愚痴で調子ダウン", "short": "Vリーガー" }, "teacher": { "name": "体育の先生", "icon": "🧑‍🏫", "stats": ["spike", "serve"], "desc": "スパイク・サーブの経験値（まれに能力+5）", "short": "体育教師" }, "gym": { "name": "ジムトレーナー", "icon": "🏋️", "stats": ["jump", "stamina"], "desc": "ジャンプ・スタミナの経験値（まれに能力+5）", "short": "トレーナー" }, "shakai": { "name": "社会人チームの選手", "icon": "🏅", "stats": ["block", "receive"], "desc": "ブロック・レシーブの経験値（まれに能力+5）", "short": "社会人選手" }, "cafe": { "name": "カフェ店長", "icon": "☕", "stats": ["toss", "mental"], "desc": "トス・メンタルの経験値（まれに能力+5）", "short": "カフェ店長" }, "book": { "name": "書店員", "icon": "📚", "desc": "特殊能力の本をもらえる", "short": "書店員" }, "sports": { "name": "スポーツ用品店員", "icon": "🛠", "desc": "器材の耐久度を回復、または器材のお楽しみ券", "short": "用品店員" }, "shoes": { "name": "シューズ職人", "icon": "👟", "desc": "能力を上げる道具をもらえる", "short": "シューズ職人" }, "zakka": { "name": "雑貨店員", "icon": "🛍", "desc": "進行用アイテムをもらえる", "short": "雑貨店員" }, "uranai": { "name": "占い師", "icon": "🔮", "desc": "見えている悪いことマスを良いことマスに、または1人の性格を変える", "short": "占い師" }, "tabi": { "name": "ならず者", "icon": "😎", "desc": "手札をすべて入れ替える／手札の数字を振り直す／見えているマスをかき回す（どれになるかは運しだい）", "short": "ならず者" }, "jhcoach": { "name": "中学バレー部コーチ", "icon": "📋", "desc": "新入生の履歴書をもらえる", "short": "中学コーチ" }, "idol": { "name": "アイドル", "icon": "🎤", "mgr": true, "desc": "練習効率アップ（全員「中」／3人「大」）か調子アップ", "short": "アイドル" }, "nurse": { "name": "看護師", "icon": "🩺", "mgr": true, "desc": "全員の体力が回復", "short": "看護師" } }, "PLAYER_JOBS": ["teacher", "gym", "shakai", "cafe", "book", "sports", "shoes", "zakka", "uranai", "tabi", "jhcoach"], "MGR_HOLD": { "redpen": { "name": "赤ペン＋バインダー", "desc": "1学年の練習効率「中」アップ" }, "whistle": { "name": "笛＋バインダー", "desc": "体育館レベル+1（ワックス）または器材の耐久度回復" }, "binder": { "name": "バインダー", "desc": "床用ワックスを2個もらえる" }, "secret": { "name": "マル秘ノート", "desc": "本か進行用アイテムを2個もらえる" }, "none": { "name": "持ち物なし", "desc": "全員の体力+2段階" }, "analysis": { "name": "分析ノート（男子）", "desc": "次の公式戦を偵察済みにし、1〜3人の調子アップ" } } }, "profile": { "_説明": "選手のプロフィール。IDから毎回同じ内容が作られる", "HOBBIES": ["カフェめぐり", "読書", "ゲーム", "料理", "お菓子作り", "映画鑑賞", "アニメ鑑賞", "カラオケ", "ピアノ", "ギター", "写真", "イラスト", "ダンス", "ランニング", "釣り", "キャンプ", "昼寝", "手芸", "アイドルの推し活", "動画編集", "古着屋めぐり", "筋トレ", "プラモデル", "猫カフェ", "パズル", "園芸", "落語を聞くこと", "温泉めぐり", "バドミントン", "将棋"], "FOODS": ["から揚げ", "オムライス", "ラーメン", "カレー", "お寿司", "焼肉", "ハンバーグ", "グラタン", "餃子", "パンケーキ", "いちご大福", "たこ焼き", "肉じゃが", "チョコミント", "メロンパン", "焼き芋", "牛丼", "ピザ", "プリン", "うどん", "おにぎり（梅）", "チーズケーキ", "からあげクン", "親子丼", "鯛焼き"], "SUBJECTS": ["国語", "数学", "英語", "理科", "社会", "音楽", "美術", "体育", "家庭科", "情報"], "KUCHIGUSE": { "明るい": ["いっくよー！", "なんとかなるって！", "楽しんでこー！", "ドンマイドンマイ！"], "まじめ": ["基本が大事です", "一本ずつ、丁寧に", "反省して次に活かします", "よろしくお願いします"], "負けず嫌い": ["次は負けない", "まだまだ！", "もう一本！", "絶対取る"], "マイペース": ["まぁ、いっか", "ゆっくりいこ〜", "ふわぁ…", "なんとかなるよ〜"], "内気": ["が、がんばります…", "えっと…その…", "わ、わたしで良ければ…", "…はい"], "お調子者": ["任せといて〜！", "見た？今の見た？", "わたし天才かも！", "ノってきた〜！"] } }, "skills": { "SKILLS": [{ "id": "kyoda", "name": "強打", "gid": "gowan", "gname": "豪腕", "cat": "atk", "pos": null, "stats": ["spike"], "desc": "スパイク決定率 +4% / +9%" }, { "id": "uchiwake", "name": "打ち分け", "gid": "course", "gname": "コースの魔術師", "cat": "atk", "pos": null, "stats": ["spike", "mental"], "desc": "ブロックにかかりにくい（-8% / -18%）" }, { "id": "blockout", "name": "ブロックアウト", "gid": "rebound", "gname": "リバウンド職人", "cat": "atk", "pos": null, "stats": ["spike"], "desc": "ブロックされても15% / 30%で得点に変える" }, { "id": "sokko", "name": "速攻", "gid": "shinsoku", "gname": "神速", "cat": "atk", "pos": ["MB"], "stats": ["jump", "spike"], "desc": "速攻の決定率 +4% / +9%" }, { "id": "jisa", "name": "時間差", "gid": "trick", "gname": "トリックスター", "cat": "atk", "pos": ["MB", "OH"], "stats": ["spike"], "desc": "15% / 30%で相手ブロックを1枚減らす" }, { "id": "back", "name": "バックアタック", "gid": "pipe", "gname": "パイプ", "cat": "atk", "pos": ["OH", "OP"], "stats": ["spike", "jump"], "desc": "後衛から攻撃に参加しやすく、威力低下も小さい" }, { "id": "feint", "name": "フェイント上手", "gid": "kankyu", "gname": "緩急自在", "cat": "atk", "pos": null, "stats": ["spike", "mental"], "desc": "拾われても相手の返球が乱れる" }, { "id": "nidan", "name": "二段トス打ち", "gid": "ikiji", "gname": "エースの意地", "cat": "atk", "pos": ["OH", "OP"], "stats": ["spike", "mental"], "desc": "乱れたトスでも決定率が下がりにくい" }, { "id": "jumpServe", "name": "ジャンプサーブ", "gid": "dangan", "gname": "弾丸サーブ", "cat": "srv", "pos": null, "stats": ["serve", "jump"], "desc": "サービスエース +3% / +6%（ミスも少し増える）" }, { "id": "floater", "name": "ジャンプフローター", "gid": "makyu", "gname": "魔球", "cat": "srv", "pos": null, "stats": ["serve"], "desc": "相手のサーブカットを乱す" }, { "id": "nerai", "name": "狙い撃ち", "gid": "sniper", "gname": "スナイパー", "cat": "srv", "pos": null, "stats": ["serve", "mental"], "desc": "30% / 60%でレシーブが一番苦手な選手を狙う" }, { "id": "serveStable", "name": "サーブ安定", "gid": "seimitsu", "gname": "精密機械", "cat": "srv", "pos": null, "stats": ["serve"], "desc": "サーブミス -40% / -70%" }, { "id": "renzoku", "name": "連続サーブ", "gid": "ryosan", "gname": "サービスエース量産", "cat": "srv", "pos": null, "stats": ["serve", "mental"], "desc": "連続得点中はサーブの威力アップ" }, { "id": "yomi", "name": "読み", "gid": "guess", "gname": "ゲスブロック", "cat": "blk", "pos": null, "stats": ["block", "mental"], "desc": "シャットアウト率 +2% / +5%" }, { "id": "touch", "name": "ワンタッチ", "gid": "kabe", "gname": "壁", "cat": "blk", "pos": null, "stats": ["block"], "desc": "ワンタッチを取りやすく、相手の決定率を下げる" }, { "id": "kill", "name": "キルブロック", "gid": "teppeki", "gname": "鉄壁", "cat": "blk", "pos": ["MB", "OP"], "stats": ["block", "jump"], "desc": "シャットアウト率 +3% / +7%" }, { "id": "yoko", "name": "横移動", "gid": "commit", "gname": "コミットいらず", "cat": "blk", "pos": ["MB"], "stats": ["block", "stamina"], "desc": "速攻にも2枚ブロックで付く（25% / 50%）" }, { "id": "cut", "name": "サーブカット", "gid": "apass", "gname": "Aパス製造機", "cat": "def", "pos": null, "stats": ["receive"], "desc": "サーブレシーブの質が上がる" }, { "id": "hiroi", "name": "拾い屋", "gid": "shugoshin", "gname": "守護神", "cat": "def", "pos": null, "stats": ["receive"], "desc": "相手スパイクの決定率 -3% / -7%" }, { "id": "flying", "name": "フライングレシーブ", "gid": "shunen", "gname": "執念", "cat": "def", "pos": null, "stats": ["receive", "stamina"], "desc": "決められたボールを6% / 12%で拾い上げる" }, { "id": "hani", "name": "守備範囲", "gid": "shihai", "gname": "コートの支配者", "cat": "def", "pos": ["L"], "stats": ["receive"], "desc": "コート全体のディグ力アップ" }, { "id": "tsunagi", "name": "つなぎ", "gid": "under", "gname": "アンダーセッター", "cat": "def", "pos": ["L", "OH"], "stats": ["receive", "toss"], "desc": "乱れたボールを30% / 60%で立て直す" }, { "id": "tossStable", "name": "トス安定", "gid": "pinpoint", "gname": "ピンポイント", "cat": "tos", "pos": ["S"], "stats": ["toss"], "desc": "パスが乱れてもトス精度が落ちにくい" }, { "id": "haikyu", "name": "配球眼", "gid": "shireito", "gname": "司令塔", "cat": "tos", "pos": ["S"], "stats": ["toss", "mental"], "desc": "相手ブロックを減らし、捕まりにくくする" }, { "id": "tempo", "name": "速いトス", "gid": "tempoK", "gname": "テンポの支配者", "cat": "tos", "pos": ["S"], "stats": ["toss"], "desc": "速攻・平行の決定率アップ" }, { "id": "two", "name": "ツー攻撃", "gid": "kishu", "gname": "奇襲", "cat": "tos", "pos": ["S"], "stats": ["toss", "spike"], "desc": "前衛のとき、2本目を直接攻撃する" }, { "id": "jumpToss", "name": "ジャンプトス", "gid": "takai", "gname": "高い打点のトス", "cat": "tos", "pos": ["S"], "stats": ["toss", "jump"], "desc": "トスが速くなり、ブロックが遅れる" }, { "id": "tairyoku", "name": "体力自慢", "gid": "tetsujin", "gname": "鉄人", "cat": "body", "pos": null, "stats": ["stamina"], "desc": "試合中の体力消耗 -25% / -50%" }, { "id": "ganjo", "name": "頑丈", "gid": "fujimi", "gname": "不死身", "cat": "body", "pos": null, "stats": ["stamina"], "desc": "ケガの確率 -40% / -70%" }, { "id": "kaifuku", "name": "回復上手", "gid": "chokaifuku", "gname": "超回復", "cat": "body", "pos": null, "stats": ["stamina"], "desc": "毎日の体力回復が早い" }, { "id": "honban", "name": "本番に強い", "gid": "biggame", "gname": "ビッグゲーム", "cat": "body", "pos": null, "stats": ["mental"], "desc": "準決勝以上・全国大会で能力 +4% / +8%" }, { "id": "clutch", "name": "接戦◎", "gid": "deuce", "gname": "デュースの女王", "cat": "body", "pos": null, "stats": ["mental"], "desc": "終盤の接戦で能力 +4% / +8%" }, { "id": "gyakkyo", "name": "逆境◎", "gid": "fukutsu", "gname": "不屈", "cat": "body", "pos": null, "stats": ["mental"], "desc": "セットを先行されているとき能力 +4% / +8%" }, { "id": "seicho", "name": "成長促進", "gid": "tensai", "gname": "天才肌", "cat": "body", "pos": null, "stats": ["all"], "awaken": true, "desc": "練習で得る経験値 +15% / +30%（覚醒イベントのみ）" }, { "id": "mood", "name": "ムードメーカー", "gid": "taiyo", "gname": "太陽", "cat": "team", "pos": null, "stats": ["mental"], "cond": { "pers": "明るい" }, "desc": "出場中、チーム全員の能力 +1% / +2%（条件：性格「明るい」）" }, { "id": "koe", "name": "声出し", "gid": "captain", "gname": "キャプテンシー", "cat": "team", "pos": null, "stats": ["mental"], "cond": { "minGrade": 3 }, "desc": "タイムアウトの効果が長く続く（条件：3年生）" }, { "id": "oni", "name": "練習の鬼", "gid": "senaka", "gname": "背中で語る", "cat": "team", "pos": null, "stats": ["all"], "desc": "同じポジションの後輩の経験値 +10% / +20%" }, { "id": "kirikae", "name": "切り替え上手", "gid": "nagare", "gname": "流れを変える", "cat": "team", "pos": null, "stats": ["mental"], "desc": "3連続失点のあと、チームを立て直す" }], "RED_SKILLS": [{ "id": "nomi", "name": "ノミの心臓", "desc": "接戦や大舞台で能力ダウン", "fix": "メンタル60以上で克服" }, { "id": "kegaYasui", "name": "ケガしやすい", "desc": "ケガの確率が上がる", "fix": "筋トレマスで克服することがある" }, { "id": "serveBad", "name": "サーブ不安定", "desc": "サーブミスが増える", "fix": "サーブ60以上で克服" }, { "id": "slow", "name": "スロースターター", "desc": "第1セットで能力ダウン", "fix": "公式戦・練習試合に10試合出場で克服" }, { "id": "tanchou", "name": "単調", "desc": "スパイクのコースが読まれ、ブロックされやすい", "fix": "スパイク60以上で克服" }, { "id": "tsukare", "name": "疲れやすい", "desc": "試合中の体力消耗が大きい", "fix": "スタミナ60以上で克服" }, { "id": "kajou", "name": "自信過剰", "desc": "調子の振れ幅が大きい", "fix": "イベントで克服" }, { "id": "mura", "name": "ムラっ気", "desc": "試合ごとに能力が上下する", "fix": "メンタル70以上で克服" }], "CAT_JP": { "atk": "攻撃", "srv": "サーブ", "blk": "ブロック", "def": "守備", "tos": "トス", "body": "身体・精神", "team": "チーム" } }, "titles": { "_説明": "二つ名のルール。上から順に判定し、最初に当てはまったものが付く（すでに持っている二つ名より順位が上なら付け替え）。{school}=学校の略称。type: gold=金特の分類、stat=能力の値、rec=公式戦の通算記録、sum=全能力の合計", "TITLE_RULES": [{ "type": "rec", "key": "pts", "min": 150, "name": "{school}の得点女王" }, { "type": "gold", "count": 3, "name": "{school}の怪物" }, { "type": "sum", "min": 640, "name": "{school}の完璧超人" }, { "type": "rec", "key": "blk", "min": 40, "name": "ブロック女王" }, { "type": "rec", "key": "ace", "min": 25, "name": "サービスエース女王" }, { "type": "gold", "cat": "atk", "name": "{school}の大砲" }, { "type": "gold", "cat": "blk", "name": "{school}の鉄壁" }, { "type": "gold", "cat": "def", "name": "{school}の守護神" }, { "type": "gold", "cat": "srv", "name": "{school}のサーブの鬼" }, { "type": "gold", "cat": "tos", "name": "{school}の司令塔" }, { "type": "gold", "cat": "body", "name": "{school}の鉄人" }, { "type": "gold", "cat": "team", "name": "{school}の太陽" }, { "type": "stat", "stat": "spike", "min": 85, "name": "{school}のエース" }, { "type": "stat", "stat": "block", "min": 85, "name": "{school}の壁" }, { "type": "stat", "stat": "receive", "min": 85, "name": "拾いの名手" }, { "type": "stat", "stat": "serve", "min": 85, "name": "サーブの名手" }, { "type": "stat", "stat": "toss", "min": 85, "name": "魔法のトス" }, { "type": "stat", "stat": "jump", "min": 85, "name": "跳躍姫" }, { "type": "stat", "stat": "stamina", "min": 85, "name": "無尽蔵のスタミナ" }, { "type": "stat", "stat": "mental", "min": 85, "name": "鋼のハート" }, { "type": "rec", "key": "pts", "min": 60, "name": "ポイントゲッター" }, { "type": "rec", "key": "g", "min": 30, "name": "不動のレギュラー" }] }, "training": { "CARD_KINDS": { "spike": { "name": "スパイク練", "icon": "💥", "exp": { "spike": 40, "jump": 10 } }, "block": { "name": "ブロック練", "icon": "🧱", "exp": { "block": 40, "jump": 10 } }, "receive": { "name": "レシーブ練", "icon": "🛡️", "exp": { "receive": 40, "stamina": 7 } }, "serve": { "name": "サーブ練", "icon": "🎯", "exp": { "serve": 40, "mental": 7 } }, "toss": { "name": "トス練", "icon": "🙌", "exp": { "toss": 40, "receive": 7 } }, "train": { "name": "筋トレ", "icon": "💪", "exp": { "jump": 27, "stamina": 27, "spike": 7 } }, "mental": { "name": "ミーティング", "icon": "🧠", "exp": { "mental": 40 } }, "all": { "name": "総合練習", "icon": "🏐", "exp": { "spike": 8, "jump": 8, "block": 8, "receive": 8, "serve": 8, "toss": 8, "stamina": 8, "mental": 8 } }, "rest": { "name": "休養", "icon": "🛌", "exp": {} } }, "CARD_W": { "spike": 14, "receive": 14, "block": 10, "serve": 10, "toss": 8, "train": 14, "mental": 7, "all": 12, "rest": 11 }, "CARD_MODS": { "normal": { "name": "", "exp": 1, "fat": 1, "desc": "" }, "focus": { "name": "集中", "exp": 1.5, "fat": 1.5, "desc": "経験値×1.5・疲れ×1.5" }, "light": { "name": "軽め", "exp": 0.7, "fat": 0.5, "desc": "経験値×0.7・疲れ×0.5" }, "self": { "name": "自主練", "exp": 1, "fat": 1, "desc": "個別メニュー×2" }, "ob": { "name": "OB指導", "exp": 2, "fat": 1.2, "desc": "OBコーチの指導 経験値×2" } }, "ACTION_KINDS": { "watch": { "name": "観戦", "icon": "📺", "desc": "強豪の試合を観戦（1日）。次の練習カード1回分、練習効率「小」アップ" }, "meal": { "name": "食事会", "icon": "🍱", "desc": "食事会（1日）。全員の体力が1段階回復し、調子が上がりやすい。2人の絆も深まる" }, "lesson": { "name": "個別指導", "icon": "👩‍🏫", "desc": "個別指導（1日）。1人を選んで、指定した能力をみっちり指導" }, "pmatch": { "name": "練習試合", "icon": "🏐", "desc": "相手を選んで練習試合（1日）。前評判を見てオーダーを組み、大会と同じく指示できる" }, "recon": { "name": "偵察", "icon": "🔭", "desc": "偵察（1日）。次の公式戦の相手を偵察。大会当日、相手の特殊能力が見え、チーム能力+2%" }, "scout": { "name": "スカウト", "icon": "🔍", "desc": "スカウト（1日）。中学校を回って視察ポイント+3（10/1〜2/28）" }, "career": { "name": "進路相談", "icon": "🗣", "desc": "進路相談（1日）。3年生1人の卒業後の進路を誘導する（9月〜2月）" } }, "ACTION_W": { "watch": 7, "meal": 7, "lesson": 6, "pmatch": 6, "recon": 5, "scout": 7, "career": 4 }, "POLICIES": { "balance": { "name": "バランス", "desc": "偏りなし" }, "attack": { "name": "攻撃重視", "desc": "スパイク練・サーブ練が出やすい" }, "defense": { "name": "守備重視", "desc": "レシーブ練・ブロック練が出やすい" }, "body": { "name": "体づくり", "desc": "筋トレ・休養が出やすい" }, "setter": { "name": "司令塔育成", "desc": "トス練・ミーティングが出やすい" }, "jissen": { "name": "実戦重視", "desc": "行動カード（特に練習試合・観戦）が出やすい" } }, "POLICY_MULT": { "attack": { "spike": 1.7, "serve": 1.7 }, "defense": { "receive": 1.7, "block": 1.7 }, "body": { "train": 1.7, "rest": 1.5 }, "setter": { "toss": 1.8, "mental": 1.8 }, "jissen": { "pmatch": 2, "watch": 1.6 } }, "TILE_TYPES": { "normal": { "name": "普通", "icon": "・", "desc": "何も起きない（隠しマスの日は何かが起きることも）" }, "good": { "name": "良いこと", "icon": "😊", "desc": "差し入れ・寄付・覚醒・取材・練習効率アップなど" }, "bad": { "name": "悪いこと", "icon": "😣", "desc": "ケガ・ケンカ・不調・出費など（70%で発生）" }, "power": { "name": "練習ボーナス", "icon": "🔥", "desc": "ここに着地すると、このカードの練習経験値が全日程1.3倍" }, "tokkun": { "name": "特訓", "icon": "⚡", "desc": "候補3人から1人を選び、特殊能力の習得・昇格に挑戦" }, "rest": { "name": "回復", "icon": "💤", "desc": "全員の体力が2段階回復し、調子が上がる" }, "branch": { "name": "分岐", "icon": "⭐", "desc": "この先の道を3つから選べる" }, "person": { "name": "人物", "icon": "🧑", "desc": "卒業生（5年以内）が訪ねてくる。進路によって効果が違う" }, "equip": { "name": "備品", "icon": "📦", "desc": "施設（戦績ポイント）の割引券がもらえる" } }, "TILE_W": { "normal": 26, "good": 15, "bad": 14, "power": 7, "tokkun": 3, "rest": 10, "branch": 6, "equip": 3, "person": 6 }, "ROUTE_STYLES": [{ "name": "練習の道", "w": { "power": 5, "normal": 2, "rest": 1, "good": 1, "bad": 1 } }, { "name": "出会いの道", "w": { "good": 3, "person": 3, "tokkun": 2, "normal": 2, "bad": 1 } }, { "name": "荒れた道", "w": { "bad": 3, "tokkun": 3, "power": 2, "good": 1, "normal": 1 } }, { "name": "のんびりの道", "w": { "rest": 4, "normal": 3, "good": 2, "bad": 1 } }], "CAMP_OPTS": [{ "id": "none", "name": "合宿しない", "cost": 0, "desc": "しっかり休む（体力回復）" }, { "id": "normal", "name": "通常合宿", "cost": 100, "desc": "全能力とポジションの主要能力に経験値（大）／体力1段階ダウン" }, { "id": "hard", "name": "強化合宿（強豪校と合同）", "cost": 250, "desc": "経験値（特大）＋県内最強校と練習試合／体力1.5段階ダウン／まれに特殊能力を習得" }], "FOCUS": { "spike": { "name": "スパイク", "desc": "スパイク練が出やすい" }, "block": { "name": "ブロック", "desc": "ブロック練が出やすい" }, "receive": { "name": "レシーブ", "desc": "レシーブ練が出やすい" }, "serve": { "name": "サーブ", "desc": "サーブ練が出やすい" }, "toss": { "name": "トス", "desc": "トス練が出やすい" }, "train": { "name": "体づくり", "desc": "筋トレが出やすい" }, "mental": { "name": "メンタル", "desc": "ミーティングが出やすい" }, "all": { "name": "総合力", "desc": "総合練習が出やすい" }, "jissen": { "name": "実戦", "desc": "行動カード（特に練習試合・観戦）が出やすい" } }, "FOCUS_MULT": [1, 2.4, 1.8], "FOCUS_MAX": 2, "_FOCUSの説明": "年度初めに選ぶ方針。FOCUS_MULT[選んだ数] がそのカードの出やすさの倍率。休養カードの出る確率は方針に関係なく一定", "FROM_POLICY": { "balance": [], "attack": ["spike", "serve"], "defense": ["receive", "block"], "body": ["train"], "setter": ["toss", "mental"], "jissen": ["jissen"] }, "FIXED_DAYS": { "rest": 1, "watch": 1, "pmatch": 1, "meal": 1, "lesson": 1, "recon": 1, "scout": 1, "career": 1 }, "_FIXED_DAYSの説明": "練習以外のカードは1日固定（スケジュール系アイテムでも変わらない）", "REST_RECOVER": 28, "_REST_RECOVERの説明": "休養カード1枚（1日）の体力回復量（20で1段階）" }, "world": { "REP_TABLE": [{ "min": 0, "name": "無名", "cap": 12, "budget": 300, "scout": 0, "lo": 15, "hi": 25 }, { "min": 20, "name": "県内中堅", "cap": 13, "budget": 500, "scout": 1, "lo": 20, "hi": 30 }, { "min": 40, "name": "県内強豪", "cap": 14, "budget": 800, "scout": 1, "lo": 25, "hi": 35 }, { "min": 60, "name": "全国区", "cap": 15, "budget": 1200, "scout": 2, "lo": 30, "hi": 40 }, { "min": 80, "name": "名門", "cap": 16, "budget": 1800, "scout": 3, "lo": 35, "hi": 45 }], "COLORS": [{ "id": "red", "name": "赤", "c": "#d8343a" }, { "id": "blue", "name": "青", "c": "#2f63d6" }, { "id": "green", "name": "緑", "c": "#2e9e4f" }, { "id": "yellow", "name": "黄", "c": "#d9a600" }, { "id": "purple", "name": "紫", "c": "#8a3fc7" }, { "id": "black", "name": "黒", "c": "#333333" }], "OPP_COLORS": ["#2f63d6", "#2e9e4f", "#8a3fc7", "#e07020", "#3a3a3a", "#1a9a9a", "#c03070", "#6a6a20"], "PERSONALITIES": ["明るい", "まじめ", "負けず嫌い", "マイペース", "内気", "お調子者"] } };
-const GAME_VERSION = '13.6';
+const GAME_VERSION = '13.10';
 const SAVE_KEY = 'vbcoach_save_v13';
 const SAVE_VERSION = 17;
 const STATS = ['spike', 'jump', 'block', 'receive', 'serve', 'toss', 'stamina', 'mental'];
@@ -756,7 +785,7 @@ function genPlayer(o) {
     STATS.forEach(s => exp[s] = 0);
     const id = uid('p');
     return {
-        id, face: genFace(id, arch.face), last: nm.last, first: nm.first, grade: o.grade || 1, pos, archetype: arch.id, skillCats: arch.cats.slice(), height: h,
+        id, face: genFace(id, arch.face), last: nm.last, first: nm.first, grade: o.grade || 1, pos, archetype: arch.id, genius: !!o.genius, skillCats: arch.cats.slice(), height: h,
         hand: R() < 0.15 ? '左' : '右', pers: (R() < 0.6 && arch.pers && arch.pers.length) ? pick(arch.pers) : pick(PERSONALITIES),
         growth: wpick(['早熟', '普通', '晩成'], [30, 50, 20]),
         stats, exp, apt, aptExp: {}, sub: genSub(pos, apt), convWeeks: 0, convYear: 0, condition: 2, fatigue: 0, injury: 0, menu: 'auto',
@@ -1893,7 +1922,7 @@ function monthlySkillCheck(s, notes) {
                 continue;
             const v = relStat(p, d);
             if (hasSk(p, d.id)) {
-                if (v >= 85 && R() < 0.05) {
+                if (v >= 85 && R() < (p.genius ? 0.10 : 0.05)) { // v13.9：天才型は昇格率×2
                     promote(p, d);
                     notes.push(`🌟 ${nm}の「${d.name}」が金特「${d.gname}」に昇格！`);
                 }
@@ -1901,7 +1930,7 @@ function monthlySkillCheck(s, notes) {
             }
             if (!posOk(p, d) || !condOk(d, p))
                 continue;
-            if (v >= 60 && R() < ((p.skillCats || []).includes(d.cat) ? 0.07 : 0.04)) {
+            if (v >= 60 && R() < ((p.skillCats || []).includes(d.cat) ? 0.07 : 0.04) * (p.genius ? 2 : 1)) { // v13.9：天才型は習得率×2
                 addSkill(p, d.id);
                 notes.push(`🟦 ${nm}が特殊能力「${d.name}」を習得！`);
             }
@@ -1917,7 +1946,7 @@ function monthlySkillCheck(s, notes) {
 // 覚醒イベント：金特または成長促進
 function awakenSkill(p) {
     const own = SKILLS.filter(d => hasSk(p, d.id) && !d.awaken);
-    if (own.length && R() < 0.5) {
+    if (own.length && R() < (p.genius ? 0.85 : 0.5)) { // v13.9：天才型は覚醒で金特化しやすい
         const d = pick(own);
         promote(p, d);
         return `金特「${d.gname}」に目覚めた`;
@@ -1943,7 +1972,7 @@ function growthMult(p) { return GROWTH[p.growth][clamp(p.grade, 1, 3) - 1] * (p.
 function addExp(p, stat, amt) {
     if (amt <= 0)
         return;
-    p.exp[stat] += amt * growthMult(p);
+    p.exp[stat] += amt * growthMult(p) * (p.genius ? 1.5 : 1); // v13.9：天才型は経験値×1.5
     while (p.stats[stat] < 100 && p.exp[stat] >= needExp(p.stats[stat])) {
         p.exp[stat] -= needExp(p.stats[stat]);
         p.stats[stat]++;
@@ -2232,7 +2261,9 @@ function genRecruits(s, count) {
         POS.forEach(p => cnt[p] = 0);
         [...activePlayers(s).filter(p => p.grade < 3), ...out].forEach(p => cnt[p.pos]++);
         const pos = wpick(POS, POS.map(p => Math.max(0.3, target[p] - cnt[p])));
-        out.push(rookieSkills(genPlayer({ pos, avg: ri(ri_.lo, ri_.hi), spread: 8, grade: 1, year: s.year, existing: [...s.players, ...out] })));
+        const rp = rookieSkills(genPlayer({ pos, avg: ri(ri_.lo, ri_.hi), spread: 8, grade: 1, year: s.year, existing: [...s.players, ...out] }));
+        rp.genius = R() < 0.05; // v13.9：新入生の約5%が天才型
+        out.push(rp);
     }
     return out;
 }
@@ -2443,7 +2474,59 @@ function ensureV135(s) {
     if (s.u18OfferedYear == null) s.u18OfferedYear = 0;
     return s;
 }
+/* v13.7：既存選手の顔を新形式に統一。v13.4で追加された鼻・口・眉の9項目が無い顔は、
+   選手IDから決まる決定的なシードでランダム生成して埋める（肌・髪・目など既存項目は変えない）。
+   決定的シードなので、保存前に再読み込みしても同じ顔になる（冪等）。 */
+const FACE137_FIELDS = ['nose', 'noseSize', 'noseY', 'mouth', 'mouthSize', 'mouthY', 'browShape', 'browLen', 'browY'];
+function migrateFaceV137(f, seedKey) {
+    if (!f || typeof f !== 'object') return f;
+    if (FACE137_FIELDS.every(k => f[k] != null)) return f;
+    const g = genFace(String(seedKey || 'x') + '-face137');
+    for (const k of FACE137_FIELDS) if (f[k] == null) f[k] = g[k];
+    return f;
+}
+function ensureV137Faces(s) {
+    if (!s) return s;
+    const mig = p => { if (p) migrateFaceV137(p.face || (p.face = genFace(p.id || p.name || 'x')), p.id || p.name); };
+    for (const p of (s.players || [])) mig(p);
+    for (const p of (s.pendingApplicants || [])) mig(p);
+    if (s.scout) {
+        for (const x of (s.scout.prospects || [])) if (x && x.p) mig(x.p);
+        for (const p of (s.scout.signed || [])) mig(p);
+    }
+    for (const a of (s.alumni || [])) if (a && a.face) migrateFaceV137(a.face, a.name);
+    return s;
+}
 /* ---------- セーブデータ移行 ---------- */
+/* v13.9：天才型フラグの補完。旧セーブ（v13.8以前）の選手は全員 genius=false。
+   新規生成時は genPlayer() が genius:false を既定で付けるので、ここは旧データの補完のみ。 */
+function ensureV139Genius(s) {
+    if (!s) return s;
+    const mig = p => { if (p) p.genius = !!p.genius; };
+    for (const p of (s.players || [])) mig(p);
+    for (const p of (s.pendingApplicants || [])) mig(p);
+    if (s.scout) {
+        for (const x of (s.scout.prospects || [])) if (x && x.p) mig(x.p);
+        for (const p of (s.scout.signed || [])) mig(p);
+    }
+    for (const a of (s.alumni || [])) if (a) mig(a);
+    return s;
+}
+/* v13.10：基本顔テンプレート（tpl）の補完。旧セーブ（v13.9以前）の顔は目の形から一番近い
+   テンプレートを決定的に割り当てる。目の形・眉・口・鼻・あごなどの見た目は変えない
+   （tpl は表示・編集用の目安のみ）。目の大きさも変えない。 */
+function ensureV1310Tpl(s) {
+    if (!s) return s;
+    const mig = p => { if (p && p.face) { const f = p.face; if (f.tpl == null) { const i = FACE_TPL.findIndex(t => t.eyeShape === f.eyeShape); f.tpl = i >= 0 ? i : (faceHash(String(f.seed ?? f.eyeShape ?? 'x')) % FACE_TPL.length); } } };
+    for (const p of (s.players || [])) mig(p);
+    for (const p of (s.pendingApplicants || [])) mig(p);
+    if (s.scout) {
+        for (const x of (s.scout.prospects || [])) if (x && x.p) mig(x.p);
+        for (const p of (s.scout.signed || [])) mig(p);
+    }
+    for (const a of (s.alumni || [])) if (a) mig(a);
+    return s;
+}
 function migrate(s) {
     if (!s)
         return s;
@@ -2453,6 +2536,9 @@ function migrate(s) {
         throw new Error('v13では旧バージョン（v12以前）のセーブは読み込めません。続きはv12-4のファイルで遊んでください');
     ensureV134(s);
     ensureV135(s);
+    ensureV137Faces(s);
+    ensureV139Genius(s);
+    ensureV1310Tpl(s);
     if (s.school && s.school.money != null) {
         const m = s.school.money;
         s.points = (s.points || 0) + m * 10;
@@ -2653,6 +2739,7 @@ function genProspects(s) {
         const star = R() < 0.15;
         const pos = i < 7 ? Object.keys(target).flatMap(k => Array(target[k]).fill(k))[i] : pick(POS);
         const p = rookieSkills(genPlayer({ pos, avg: ri(info.lo + 5, info.hi + 10) + (star ? 10 : 0), spread: 8, grade: 1, year: s.year + 1, existing: [...s.players, ...out.map(x => x.p)] }));
+        p.genius = R() < 0.05; // v13.9：スカウト候補の約5%が天才型
         out.push({ id: p.id, p, ms: `${pick(SCHOOL_PREFIX)}中学`, seen: 0, offered: false, star, res: null });
     }
     return shuffle(out);
@@ -2830,7 +2917,7 @@ function doCamp(s, id) {
             if (R() < 0.3)
                 p.condition = Math.min(4, p.condition + 1);
             injuryCheck(p, rep.notes, s.players, trainerMult(s) * 0.5);
-            if (id === 'hard' && R() < 0.12) {
+            if (id === 'hard' && R() < (p.genius ? 0.24 : 0.12)) { // v13.9：天才型は合宿での習得率×2
                 const c = SKILLS.filter(d => !d.awaken && !d.cond && posOk(p, d) && !plv(p, d.id) && relStat(p, d) >= 50);
                 if (c.length) {
                     const d = pick(c);
@@ -3824,7 +3911,7 @@ function tokkunRate(s, p, o) {
     let r = clamp(0.27 + o.v * 0.003, 0.2, 0.65) + (coachOn(s) ? 0.1 : 0);
     if (o.promo)
         r *= 0.45;
-    return Math.min(0.85, r);
+    return Math.min(0.85, r * (p.genius ? 2 : 1)); // v13.9：天才型は特訓成功率×2
 }
 function setupTokkun(s, rep) {
     const cand = activePlayers(s).filter(p => p.injury <= 0);
@@ -4042,9 +4129,8 @@ function randomEvent(s, rep, pool) {
     const nm = p => dispName(p, s.players);
     if (pool !== 'bad') {
         const reds = act.filter(p => RED_SKILLS.some(d => hasSk(p, d.id)));
-        const room = repInfo(s.school.rep).cap - s.players.length;
         const canCoach = !coachOn(s) && s.alumni.some(a => a.ovr >= 50 && a.year < s.year);
-        const ev = wpick(['snack', 'news', 'donation', 'awake', 'selfp', 'overcome', 'media', 'sponsor', 'transfer', 'obcoach', 'refresh', 'effup'], [18, 9, 12, 6, 14, reds.length ? 7 : 0, s.school.rep >= 20 ? 5 : 0, 4, room > 0 ? 2 : 0, canCoach ? 3 : 0, 12, 10]);
+        const ev = wpick(['snack', 'news', 'donation', 'awake', 'selfp', 'overcome', 'media', 'sponsor', 'obcoach', 'refresh', 'effup'], [18, 9, 12, 6, 14, reds.length ? 7 : 0, s.school.rep >= 20 ? 5 : 0, 4, canCoach ? 3 : 0, 12, 10]);
         if (ev === 'snack') {
             act.forEach(p => p.condition = Math.min(4, p.condition + 1));
             rep.notes.push('🍙 OBから差し入れ！ 全員の調子が上がった');
@@ -4074,7 +4160,7 @@ function randomEvent(s, rep, pool) {
                 const v = ri(3, 6);
                 p.stats[k] = Math.min(100, p.stats[k] + v);
                 let t = `✨ 覚醒！ ${nm(p)}の${STAT_JP[k]}が${v}上がった！`;
-                if (R() < 0.5) {
+                if (R() < (p.genius ? 0.8 : 0.5)) { // v13.9：天才型は覚醒イベントで特能を得やすい
                     const x = awakenSkill(p);
                     if (x)
                         t += ` さらに${x}！`;
@@ -4096,13 +4182,6 @@ function randomEvent(s, rep, pool) {
                 addExp(p, k, 40);
                 rep.notes.push(`🌙 ${nm(p)}が居残りで${STAT_JP[k]}を自主練した`);
             }
-        }
-        else if (ev === 'transfer') {
-            const info = repInfo(s.school.rep);
-            const p = rookieSkills(genPlayer({ avg: info.hi + 8, spread: 6, grade: ri(1, 2), year: s.year, existing: s.players }));
-            s.players.push(p);
-            ensureCaptain(s);
-            rep.notes.push(`🚚 転校生がやってきた！ ${p.grade}年の${p.last} ${p.first}（${POS_JP[p.pos]}・総合${overall(p)}）が入部`);
         }
         else if (ev === 'obcoach')
             tryAppointCoach(s, rep.notes, true);
@@ -5046,6 +5125,45 @@ const FACE = {
     browShapeW: [35, 25, 20, 20],
     expr: { normal: 'ふつう', smile: 'にっこり', happy: '大喜び', determined: '気合', sad: 'しょんぼり', tired: 'ヘトヘト', surprised: 'びっくり', angry: 'ぷんぷん' }
 };
+/* v13.10：基本顔テンプレート72種類（A テンプレート型。目の形12種類 × バリエーション6通り）。
+   顔の輪郭・目の形・眉・鼻・口の組み合わせがテンプレートごとに決まっていて、どれも崩れないかわいい顔になる。
+   髪型・髪色・目色・肌色・前髪・アクセサリーはテンプレートとは別にランダムで決まる。 */
+const FACE_TPL = (() => {
+    /* v13.10：基本顔テンプレート（A テンプレート型）。目の形12種類 × バリエーション6通り = 72種類（約70）。
+       目の形ごとに眉・口・鼻・あご・目の位置・眉の傾きの組み合わせを系統的に回して作る。
+       どの組み合わせも faceGeom のクランプ条件を満たす（smoke-13-10 で72種すべて検証）。 */
+    const eyeShapes = ['round', 'big', 'tsuri', 'tare', 'kirenaga', 'jito', 'neko', 'kira', 'hosome', 'sanpaku', 'pachiri', 'sleepy'];
+    const names = { round: 'まる目', big: 'ぱっちり', tsuri: 'つり目', tare: 'たれ目', kirenaga: '切れ長', jito: 'ジト目', neko: '猫目', kira: 'キラキラ', hosome: '糸目', sanpaku: '三白眼', pachiri: 'ぱっちり二重', sleepy: '眠たげ' };
+    const varNames = ['元気', 'おっとり', 'クール', 'ほんわか', 'いたずら', 'おすまし'];
+    const brows = ['arc', 'straight', 'angled', 'round'];
+    const mouths = ['smile', 'flat', 'open', 'small'];
+    const noses = ['dot', 'line', 'tri', 'small', 'curve'];
+    const chins = ['round', 'oval', 'square'];
+    const out = [];
+    eyeShapes.forEach((es, ei) => {
+        for (let k = 0; k < 6; k++) {
+            out.push({
+                name: names[es] + '・' + varNames[k],
+                eyeShape: es,
+                browShape: brows[(ei + k) % 4],
+                mouth: mouths[(ei * 2 + k) % 4],
+                nose: noses[(ei + k * 2) % 5],
+                chin: chins[(ei + k) % 3],
+                eyeY: [-1, 0, 0, 1, 0, -1][k],
+                browTilt: [-1, 0, 1, 2, -2, 0][k]
+            });
+        }
+    });
+    return out;
+})()
+/* v13.10：基本顔テンプレートを顔データに適用する（目の形・眉・口・鼻・あご・目の位置・眉の傾き・目の間隔） */
+function applyTpl(f, i) {
+    const T = FACE_TPL[i] || FACE_TPL[0];
+    f.tpl = FACE_TPL.indexOf(T);
+    f.eyeShape = T.eyeShape; f.browShape = T.browShape; f.mouth = T.mouth; f.nose = T.nose; f.chin = T.chin;
+    f.eyeY = T.eyeY; f.browTilt = T.browTilt; f.eyeX = 0;
+    return f;
+}
 function genFace(seed, opts) {
     const r = faceRng(typeof seed === 'number' ? seed : faceHash(seed));
     const wp = (a, w) => { let t = w.reduce((x, y) => x + y, 0), v = r() * t; for (let i = 0; i < a.length; i++) {
@@ -5055,16 +5173,21 @@ function genFace(seed, opts) {
     } return a[a.length - 1]; };
     const idx = (n) => Math.floor(r() * n);
     const pickOpt = (list, w, opt) => (opt && opt.length ? opt[Math.floor(r() * opt.length)] : wp(list, w));
-    return { v: 2, seed: Math.floor(r() * 1e9), skin: wp([0, 1, 2, 3, 4, 5], [26, 34, 18, 10, 7, 5]), hair: pickOpt(FACE.hair.map((_, i) => i), FACE.hairW, opts && opts.hair),
-        eye: idx(FACE.eye.length), style: pickOpt(FACE.styles, FACE.styleW, opts && opts.styles), bangs: wp(FACE.bangs, FACE.bangsW), eyeShape: pickOpt(FACE.eyeShape, FACE.eyeShapeW, opts && opts.eyeShape),
-        fw: 37 + Math.round(r() * 9), eyeY: Math.round(r() * 8 - 4), brow: r() < 0.25 ? 3 : r() < 0.55 ? 2.4 : 1.7, acc: wp(FACE.acc, FACE.accW),
+    /* v13.10：テンプレート型。基本顔72種類から1つ選び、目の形・眉・口・鼻・あご・目の位置・眉の傾きは
+       テンプレートが決める（組み合わせが崩れない）。型の顔指定（opts.eyeShape）がある場合は、その目の形のテンプレートだけから選ぶ。 */
+    const tplCand = FACE_TPL.map((t, i) => i).filter(i => !opts || !opts.eyeShape || !opts.eyeShape.length || opts.eyeShape.includes(FACE_TPL[i].eyeShape));
+    const tpl = tplCand.length ? tplCand[Math.floor(r() * tplCand.length)] : 0;
+    const T = FACE_TPL[tpl];
+    return { v: 2, seed: Math.floor(r() * 1e9), tpl, skin: wp([0, 1, 2, 3, 4, 5], [26, 34, 18, 10, 7, 5]), hair: pickOpt(FACE.hair.map((_, i) => i), FACE.hairW, opts && opts.hair),
+        eye: idx(FACE.eye.length), style: pickOpt(FACE.styles, FACE.styleW, opts && opts.styles), bangs: wp(FACE.bangs, FACE.bangsW), eyeShape: T.eyeShape,
+        fw: 37 + Math.round(r() * 9), eyeY: Math.min(4, Math.max(-4, T.eyeY + Math.round(r() * 2 - 1))), brow: r() < 0.25 ? 3 : r() < 0.55 ? 2.4 : 1.7, acc: wp(FACE.acc, FACE.accW),
         accColor: ['#e8566b', '#4f7be0', '#f2b233', '#7bc96f', '#ffffff', '#9a6ee0', '#ff9ad5'][idx(7)], mole: r() < 0.12, freckle: r() < 0.08, ahoge: r() < 0.3,
-        /* v13 フェーズ2：輪郭のバリエーション。末尾に追加しているので、既存の項目の決まり方は変わらない */
-        chin: wp(['round', 'sharp', 'oval', 'square'], [55, 18, 18, 9]), eyeSize: Math.round((0.88 + ((r() + r()) / 2) * 0.30) * 100) / 100, eyeX: Math.round(r() * 6 - 3), browTilt: Math.round(r() * 4 - 2),
+        /* v13.10：あごはテンプレートが決める（sharp は出さない）。目はもう一回り小さく（v13.7比 約15%） */
+        chin: T.chin, eyeSize: Math.round((0.88 + ((r() + r()) / 2) * 0.30) * 0.85 * 100) / 100, eyeX: Math.round(r() * 4 - 2), browTilt: Math.min(2, Math.max(-2, T.browTilt + Math.round(r() * 2 - 1))),
         /* v13.4：鼻・口・眉の形と大きさ・位置を末尾に追加（既存項目の決まり方は変わらない） */
-        nose: wp(FACE.nose, FACE.noseW), noseSize: Math.round((0.8 + r() * 0.5) * 100) / 100, noseY: Math.round(r() * 5 - 2),
-        mouth: wp(FACE.mouth, FACE.mouthW), mouthSize: Math.round((0.85 + r() * 0.3) * 100) / 100, mouthY: Math.round(r() * 4 - 2),
-        browShape: wp(FACE.browShape, FACE.browShapeW), browLen: Math.round((0.9 + r() * 0.2) * 100) / 100, browY: Math.round(r() * 4 - 2) };
+        nose: T.nose, noseSize: Math.round((0.8 + r() * 0.5) * 100) / 100, noseY: Math.round(r() * 5 - 2),
+        mouth: T.mouth, mouthSize: Math.round((0.85 + r() * 0.3) * 100) / 100, mouthY: Math.round(r() * 4 - 2),
+        browShape: T.browShape, browLen: Math.round((0.9 + r() * 0.2) * 100) / 100, browY: Math.round(r() * 4 - 2) };
 }
 let _fid = 0;
 
@@ -5076,16 +5199,16 @@ const EYE_SY = { round: 1, big: 1.18, tsuri: 0.92, tare: 0.95, kirenaga: 0.7, ji
 function faceGeom(f) {
     const fw = f.fw || 42;
     const L = 100 - fw - 6, R = 100 + fw + 6;
-    const chin = f.chin || 'round';
-    const chinY = ({ round: 140, sharp: 142, oval: 138, square: 141 })[chin] || 140;
-    const eyeSize = Math.min(1.20, Math.max(0.85, (f.eyeSize == null ? 1.05 : +f.eyeSize) || 1.05));
+    const chin = f.chin === 'sharp' ? 'round' : (f.chin || 'round'); // v13.8: sharp は丸あごとして描く（とがったあごを廃止）
+    const chinY = ({ round: 140, oval: 138, square: 141 })[chin] || 140;
+    const eyeSize = Math.min(1.20, Math.max(0.75, (f.eyeSize == null ? 1.05 : +f.eyeSize) || 1.05)); // v13.10: 目をもう一回り小さく（下限 0.75）
     const ey = 94 + Math.min(4, Math.max(-4, f.eyeY || 0));
     const sy = EYE_SY[f.eyeShape] || 1;
-    const eyeHalf = 13 * eyeSize * (EYE_SX[f.eyeShape] || 1);
+    const eyeHalf = 13 * eyeSize * (EYE_SX[f.eyeShape] || 1); // v13.8: 目は v13.7 と同じ大きさ（1.27倍は取り消し）
     let eo = 21 * (fw / 42) + (f.eyeX || 0);
     eo = Math.min(Math.max(eo, eyeHalf + 2), R - 100 - eyeHalf - 2);
-    const eyeTop = ey - 13 * eyeSize * sy;
-    const eyeBottom = ey + 11 * eyeSize * sy;
+    const eyeTop = ey - 17 * eyeSize * sy;
+    const eyeBottom = ey + 14 * eyeSize * sy;
     const ns = Math.min(1.3, Math.max(0.8, (f.noseSize == null ? 1 : +f.noseSize) || 1));
     const ny = 109 + Math.min(3, Math.max(-2, f.noseY || 0));
     const noseBottom = ny + 2.5 * ns;
@@ -5104,16 +5227,16 @@ function faceSVG(f, expr, team, size, crop) {
     const [sk, sks] = FACE.skin[f.skin];
     const hc = FACE.hair[f.hair], hd = shade(hc, -0.45), hl = shade(hc, 0.35);
     const ec = FACE.eye[f.eye];
-    const line = '#4a2e2a';
+    const line = '#1a1a1a'; // v13.8: Bイラストの太い黒の縁取り
     const fw = f.fw, L = 100 - fw - 6, R = 100 + fw + 6; // v13.2: 顔を少し横に広げて丸く見せる
     const r = faceRng(f.seed);
     const side = { veryshort: 104, short: 112, wolf: 124, bob: 130, semilong: 134, long: 134, wavy: 134, pony: 112, highpony: 110, twin: 118, lowtwin: 120, braid: 118, bun: 110, side: 116, halfup: 132, hime: 134, twinbun: 110 }[f.style] || 116;
     /* --- パス（v13 フェーズ2：輪郭 chin。未指定・round は従来どおり） --- */
-    const chin = f.chin || 'round';
-    const _ch = { round: [140, 86, 114], sharp: [142, 92, 108], oval: [138, 82, 118], square: [141, 88, 112] }[chin] || [140, 86, 114];
+    const chin = f.chin === 'sharp' ? 'round' : (f.chin || 'round'); // v13.8: sharp は丸あごとして描く
+    const _ch = { round: [140, 86, 114], oval: [138, 82, 118], square: [141, 88, 112] }[chin] || [140, 86, 114];
     const chinY = _ch[0], cx1 = _ch[1], cx2 = _ch[2]; // v13.3: あごに square を追加
     const G = faceGeom(f); // v13.4：鼻・口・眉の描画位置（目・鼻・口・眉のクランプ済み幾何）
-    const facePath = `M${L} 92 C${L} 118 ${cx1} ${chinY - 4} 100 ${chinY} C${cx2} ${chinY - 4} ${R} 118 ${R} 92 C${R} 56 ${L} 56 ${L} 92Z`; // v13.2: 頬の張り出しを上げ、顔を丸く
+    const facePath = `M${L} 92 C${L} 120 ${cx1} ${chinY} 100 ${chinY} C${cx2} ${chinY} ${R} 120 ${R} 92 C${R} 56 ${L} 56 ${L} 92Z`; // v13.8: あごの下端を水平接線にして丸く（Bイラスト寄り）
     // 前髪：スタイルごとに毛束を作る
     const x0 = R - 10, x1 = L + 10, W = x0 - x1;
     const st = [];
@@ -5175,20 +5298,18 @@ function faceSVG(f, expr, team, size, crop) {
             acc += w;
         }
     }
+    // v13.8: 前髪の毛先を尖らせず、毛先を制御点にして丸みのある前髪にする
     let bang = `L${x0} 74`;
-    let cx = x0, cy = 74;
     st.forEach((p, i) => {
         const last = i === st.length - 1;
-        const nx = last ? x1 : p.nx, ny = last ? 74 : p.ny;
-        bang += ` Q${cx + (p.tx - cx) * 0.15 + p.lean} ${cy + (p.ty - cy) * 0.65} ${p.tx} ${p.ty}`;
-        bang += ` Q${nx + (p.tx - nx) * 0.15 + p.lean * 0.5} ${ny + (p.ty - ny) * 0.65} ${nx} ${ny}`;
-        cx = nx;
-        cy = ny;
+        const nx = last ? x1 : (p.tx + p.lean + st[i + 1].tx + st[i + 1].lean) / 2;
+        const ny = last ? 74 : (p.ty + st[i + 1].ty) / 2;
+        bang += ` Q${p.tx + p.lean} ${p.ty} ${nx} ${ny}`;
     });
     const front = `M${L} ${side} C${L - 12} 62 ${100 - fw - 4} 27 100 28 C${100 + fw + 4} 27 ${R + 12} 62 ${R} ${side} Q${R - 4} ${side + 3} ${R - 9} ${side - 4} Q${R - 8} 92 ${R - 10} 76 ${bang} Q${L + 8} 92 ${L + 9} ${side - 4} Q${L + 4} ${side + 3} ${L} ${side}Z`;
     /* 後ろ髪 */
     let back = '';
-    const hs = `fill="${hc}" stroke="${hd}" stroke-width="1.6"`;
+    const hs = `fill="${hc}" stroke="#1a1a1a" stroke-width="2.6"`; // v13.8: 後ろ髪も太い黒の縁取り
     const tieC = f.acc === 'ribbon' ? f.accColor : team;
     const braid = (pts, w) => {
         let o = '';
@@ -5251,14 +5372,15 @@ function faceSVG(f, expr, team, size, crop) {
         frontHair = braid(p, 7) + `<circle cx="${L + 17}" cy="${204}" r="4" fill="${tieC}"/>`;
     }
     /* 体 */
-    const body = `<path d="M34 220 C38 174 66 144 100 144 C134 144 162 174 166 220Z" fill="${team}" stroke="${shade(team, -0.4)}" stroke-width="1.5"/>
-  <path d="M84 144 L100 164 L116 144 Z" fill="#fff"/><path d="M86 144 L100 160 L114 144" fill="none" stroke="${shade(team, -0.3)}" stroke-width="3"/>
+    const body = `<path d="M34 220 C38 174 66 144 100 144 C134 144 162 174 166 220Z" fill="${team}" stroke="#1a1a1a" stroke-width="2.5"/>
+  <path d="M84 144 L100 164 L116 144 Z" fill="#fff"/><path d="M86 144 L100 160 L114 144" fill="none" stroke="#1a1a1a" stroke-width="3.5"/>
   <rect x="84" y="130" width="32" height="14" rx="6" fill="${sk}"/><path d="M84 136 Q100 141 116 136 L116 144 Q100 147 84 144Z" fill="${sks}" opacity=".7"/>`; // v13.4(B案): 首は幅32・長さ14（見える部分はあご〜肩の約2〜6px）。肩を144まで上げる
     /* 顔 */
     const ears = `<ellipse cx="${100 - fw - 1}" cy="100" rx="5" ry="8" fill="${sk}" stroke="${sks}"/><ellipse cx="${100 + fw + 1}" cy="100" rx="5" ry="8" fill="${sk}" stroke="${sks}"/>`;
-    const face = `<path d="${facePath}" fill="${sk}" stroke="${line}" stroke-width="1.1" stroke-opacity=".55"/>`;
+    const face = `<path d="${facePath}" fill="${sk}" stroke="#1a1a1a" stroke-width="3" stroke-opacity="1"/>`; // v13.8: Bイラスト寄りの太い黒のアウトライン
+    const jaw = `<g clip-path="url(#${id}f)"><ellipse cx="100" cy="${chinY - 3}" rx="${fw * 0.72}" ry="6" fill="${sks}" opacity=".20"/><path d="M${L + 8} 62 Q100 50 ${R - 8} 62" stroke="${sks}" stroke-width="5" fill="none" opacity=".12" stroke-linecap="round"/></g>`; // v13.8: あご下・髪下の柔らかい陰影
     const hap = expr === 'happy' || expr === 'smile';
-    const blush = `<ellipse cx="${100 - fw * 0.62}" cy="113" rx="7.5" ry="3.6" fill="#ff7f93" opacity="${hap ? 0.5 : 0.28}"/><ellipse cx="${100 + fw * 0.62}" cy="113" rx="7.5" ry="3.6" fill="#ff7f93" opacity="${hap ? 0.5 : 0.28}"/>`
+    const blush = `<ellipse cx="${100 - fw * 0.62}" cy="114" rx="9.5" ry="4.8" fill="#ff7f93" opacity="${hap ? 0.65 : 0.5}"/><ellipse cx="${100 + fw * 0.62}" cy="114" rx="9.5" ry="4.8" fill="#ff7f93" opacity="${hap ? 0.65 : 0.5}"/>` // v13.8: Bイラスト寄りにチークを大きく・濃く
         + (f.freckle ? [...Array(6)].map((_, i) => `<circle cx="${100 + (i < 3 ? -1 : 1) * (fw * 0.5 + (i % 3) * 4)}" cy="${110 + (i % 2) * 2}" r=".9" fill="${sks}"/>`).join('') : '');
     /* 目（形ごとのパラメータ） */
     const ES = {
@@ -5275,10 +5397,10 @@ function faceSVG(f, expr, team, size, crop) {
         pachiri: { sx: 1.12, sy: 1.22, rot: 0, ir: 1.12, lid: 0, wing: 1, hl: 'd' },
         sleepy: { sx: 1.05, sy: .9, rot: 2, ir: .95, lid: .6, wing: .8, hl: 'n' }
     }[f.eyeShape] || { sx: 1, sy: 1, rot: 0, ir: 1, lid: 0, wing: 1, hl: 'n' };
-    const eyeSize = Math.min(1.20, Math.max(0.85, (f.eyeSize == null ? 1.05 : +f.eyeSize) || 1.05)); // v13.3: 目は小さく（基準1.05）＋選手ごとのランダム
+    const eyeSize = Math.min(1.20, Math.max(0.75, (f.eyeSize == null ? 1.05 : +f.eyeSize) || 1.05)); // v13.10: 目は小さく（基準0.9）＋選手ごとのランダム（下限0.75）
     const ey = 94 + Math.min(4, Math.max(-4, f.eyeY || 0));
     let eo = 21 * (fw / 42) + (f.eyeX || 0);
-    const eyeHalf = 13 * eyeSize * (ES.sx || 1); // v13.3: 目同士が重ならない・顔からはみ出さないよう間隔をクランプ
+    const eyeHalf = 13 * eyeSize * (ES.sx || 1); // v13.8: 目は v13.7 と同じ大きさ（1.27倍は取り消し）。faceGeom と同じ式でクランプ
     eo = Math.min(Math.max(eo, eyeHalf + 2), R - 100 - eyeHalf - 2);
     const rot = (ES.rot || 0) + (expr === 'determined' ? -5 : 0) + (expr === 'angry' ? -9 : 0) + (expr === 'sad' ? 5 : 0);
     const white = 'M-11 2 C-10 -10 8 -13 13 -3 C11 7 3 11 -3 11 C-8 10 -11 6 -11 2Z';
@@ -5296,14 +5418,14 @@ function faceSVG(f, expr, team, size, crop) {
             const sur = expr === 'surprised';
             const ir = ES.ir * (sur ? 0.8 : 1);
             const pupil = ES.slit ? `<ellipse cx=".5" cy="1.5" rx="1.4" ry="${7 * ir}" fill="${shade(ec, -0.75)}"/>` : `<ellipse cx=".5" cy="${sur ? 2 : 1.5}" rx="${4 * ir}" ry="${6 * ir}" fill="${shade(ec, -0.7)}"/>`;
-            let hlt = `<circle cx="3.6" cy="-3.5" r="${sur ? 2.2 : 3.1}" fill="#fff"/><circle cx="-3" cy="6" r="1.4" fill="#fff" opacity=".9"/>`;
+            let hlt = `<circle cx="3.6" cy="-3.5" r="${sur ? 2.2 : 3.1}" fill="#fff"/><circle cx="-3" cy="6" r="1.4" fill="#fff" opacity=".9"/>` + star(4.8, 4.6, 2.4); // v13.8: 虹彩に星のキラキラ（Bイラスト）
             if (ES.hl === 'd')
                 hlt += `<circle cx="-4" cy="-4" r="1.6" fill="#fff" opacity=".9"/>`;
             if (ES.hl === 's')
                 hlt = star(3.2, -3.6, 4.2) + `<circle cx="-3.5" cy="5.5" r="1.6" fill="#fff"/><circle cx="5" cy="5" r="1" fill="#fff"/>`;
             const wing = ES.wing || 1;
-            g = `<g transform="scale(${ES.sx} ${ES.sy})"><path d="${white}" fill="#fff"/><g clip-path="url(#${id}e)"><ellipse cx=".5" cy="${sur ? 2 : 1}" rx="${8 * ir}" ry="${10.5 * ir}" fill="url(#${id}g)"/>${pupil}
-      <ellipse cx=".5" cy="7" rx="${6 * ir}" ry="3" fill="${shade(ec, 0.6)}" opacity=".5"/><path d="M-12 -2 C-6 -9 6 -10 14 -4 L14 -12 L-12 -12Z" fill="${line}" opacity=".18"/></g>
+            g = `<g transform="scale(${ES.sx} ${ES.sy})"><path d="${white}" fill="#fff" stroke="#1a1a1a" stroke-width="2.2"/><g clip-path="url(#${id}e)"><ellipse cx=".5" cy="${sur ? 2 : 1}" rx="${8 * ir}" ry="${10.5 * ir}" fill="url(#${id}g)"/>${pupil}
+      <ellipse cx=".5" cy="7" rx="${7 * ir}" ry="3" fill="${shade(ec, 0.65)}" opacity=".65"/><path d="M-12 -2 C-6 -9 6 -10 14 -4 L14 -12 L-12 -12Z" fill="${line}" opacity=".18"/></g>
       ${hlt}
       <path d="M-12 2.5 C-11 -11 8 -14.5 14 -3.5" stroke="${line}" stroke-width="3.2" fill="none" stroke-linecap="round"/><path d="M12 -4.5 L${12 + 5.5 * wing} ${-4.5 - 3.5 * wing}" stroke="${line}" stroke-width="2" stroke-linecap="round"/>
       ${ES.tare ? `<path d="M-6 11 Q4 13 12 7" stroke="${line}" stroke-width="1.6" fill="none"/>` : `<path d="M-6 11 Q2 12.5 9 8" stroke="${line}" stroke-width="1" fill="none" opacity=".55"/>`}<path d="M-8 -11.5 Q3 -16 12 -9" stroke="${line}" stroke-width="1" fill="none" opacity=".45"/>`;
@@ -5354,9 +5476,9 @@ function faceSVG(f, expr, team, size, crop) {
     const mouthHtml = (expr === 'sad' || expr === 'angry' || expr === 'surprised' || expr === 'determined') ? (M[expr] || M.normal) : mouthFor(expr === 'happy' ? 'open' : (f.mouth || 'smile'));
     /* 前髪の影・前髪 */
     const fh = `<g clip-path="url(#${id}f)"><path d="${front}" transform="translate(0 4)" fill="${sks}" opacity=".75"/></g>
-  <path d="${front}" fill="${hc}" stroke="${hd}" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="${front}" fill="${hc}" stroke="#1a1a1a" stroke-width="2.6" stroke-linejoin="round"/>
   <path d="M${100 - fw * 0.25} 34 Q${100 - fw * 0.5} 52 ${100 - fw * 0.55} 72 M${100 + fw * 0.3} 34 Q${100 + fw * 0.45} 54 ${100 + fw * 0.5} 70 M100 32 Q102 50 99 64" stroke="${hd}" stroke-width="1.2" fill="none" opacity=".55"/>
-  <path d="M${L + 12} 56 Q100 40 ${R - 12} 56" stroke="${hl}" stroke-width="5" fill="none" stroke-linecap="round" opacity=".55"/>`;
+  <path d="M${L + 12} 56 Q100 40 ${R - 12} 56" stroke="${hl}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".45"/><path d="M${L + 18} 68 Q100 54 ${R - 18} 68" stroke="${hl}" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>`; // v13.8: Bイラスト寄りの髪のツヤ帯
     const aho = f.ahoge ? `<path d="M99 30 Q104 10 118 14 Q106 16 104 30Z" fill="${hc}" stroke="${hd}" stroke-width="1.4"/>` : '';
     /* アクセサリー */
     let acc = '';
@@ -5388,7 +5510,7 @@ function faceSVG(f, expr, team, size, crop) {
         fx = `<path d="M${R + 4} 66 l3 -8 M${R + 9} 70 l6 -5" stroke="${line}" stroke-width="2" stroke-linecap="round"/>`;
     if (expr === 'angry')
         fx = `<g transform="translate(${R + 6} 64)"><path d="M0 -6 L2 -2 L6 -2 L3 1 L4 6 L0 3 L-4 6 L-3 1 L-6 -2 L-2 -2Z" fill="#e8566b" stroke="#a03040" stroke-width=".8"/></g>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${crop === 'head' ? `34 6 132 ${chinY - 6}` : '18 4 164 216'}" width="${size}" height="${crop === 'head' ? Math.round(size * (chinY - 6) / 132) : Math.round(size * 216 / 164)}">${back}${body}${ears}${face}${blush}${eyes}${nose}${mouthHtml}${fh}${frontHair}${aho}${acc}${fx}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${crop === 'head' ? `30 10 140 ${chinY - 14}` : '26 8 148 172'}" width="${size}" height="${crop === 'head' ? Math.round(size * (chinY - 14) / 140) : Math.round(size * 172 / 148)}">${back}${body}${ears}${face}${jaw}${blush}${eyes}${nose}${mouthHtml}${fh}${frontHair}${aho}${acc}${fx}</svg>`;
 }
 /* ---------- 顔と表情（v11-3） ---------- */
 /** 顔データ（なければIDから作る。同じIDなら毎回同じ顔） */
@@ -5545,7 +5667,7 @@ const dn = p => dispName(p, S.players);
 /** 小さい顔（頭の部分だけ）。表情を省略すると今の状態から自動で決める */
 function avatar(p, size, expr) {
     const sz = size || 34;
-    return `<span class="av" style="width:${sz}px;height:${Math.round(sz * 146 / 132)}px">${faceSVG(faceOf(p), expr || exprOf(p), teamColor(), sz, 'head')}</span>`;
+    return `<span class="av" style="width:${sz}px;height:${Math.round(sz * (faceGeom(faceOf(p)).chinY - 14) / 140)}px">${faceSVG(faceOf(p), expr || exprOf(p), teamColor(), sz, 'head')}</span>`; // v13.8: head crop のアスペクトに合わせる
 }
 /** 大きい顔（上半身） */
 function portrait(p, size, expr) {
@@ -5568,6 +5690,7 @@ function drawFaceEdit() {
   <div class="row"><div style="text-align:center">${faceSVG(f, faceEdit.expr, teamColor(), 200)}<br>
     <span class="sm">表情の確認：</span><select onchange="faceEdit.expr=this.value;drawFaceEdit()">${Object.entries(FACE.expr).map(([k, n]) => `<option value="${k}" ${k === faceEdit.expr ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
   <div class="col" style="min-width:240px">
+    ${sel('tpl', '基本顔', FACE_TPL.map((_, i) => i), (v, i) => FACE_TPL[i].name)}
     ${sel('style', '髪型', FACE.styles, v => FACE.styleName[v])}
     ${sel('bangs', '前髪', FACE.bangs, v => FACE.bangsName[v])}
     ${sel('hair', '髪の色', FACE.hair.map((_, i) => i), (v, i) => FACE.hairName[i])}
@@ -5575,7 +5698,7 @@ function drawFaceEdit() {
     ${sel('eye', '目の色', FACE.eye.map((_, i) => i), (v, i) => FACE.eyeName[i])}
     ${sel('skin', '肌の色', [0, 1, 2, 3, 4, 5], (v, i) => FACE.skinName[i])}
     ${sel('acc', 'アクセサリー', FACE.acc, v => FACE.accName[v])}
-    ${sel('chin', 'あごの形', ['round', 'sharp', 'oval', 'square'], v => ({ round: '丸あご', sharp: 'シャープ', oval: '卵型', square: '四角あご' })[v])}
+    ${sel('chin', 'あごの形', ['round', 'oval', 'square'], v => ({ round: '丸あご', oval: '卵型', square: '四角あご' })[v])}
     ${sel('brow', '眉の太さ', [1.7, 2.4, 3], v => v + 'pt')}
     ${sel('nose', '鼻の形', FACE.nose, v => FACE.noseName[v])}
     ${sel('mouth', '口の形', FACE.mouth, v => FACE.mouthName[v])}
@@ -5584,7 +5707,7 @@ function drawFaceEdit() {
     <label class="fe"><input type="checkbox" ${f.ahoge ? 'checked' : ''} onchange="feSet('ahoge',this.checked)"> アホ毛</label>
     <label class="fe"><input type="checkbox" ${f.mole ? 'checked' : ''} onchange="feSet('mole',this.checked)"> ほくろ</label>
     <label class="fe"><input type="checkbox" ${f.freckle ? 'checked' : ''} onchange="feSet('freckle',this.checked)"> そばかす</label>
-    <label class="fe">目の大きさ <input type="range" min="0.85" max="1.20" step="0.01" value="${f.eyeSize ?? 1.05}" oninput="this.nextElementSibling.textContent=(+this.value).toFixed(2)" onchange="feSet('eyeSize',this.value)"> <span>${(f.eyeSize ?? 1.05).toFixed(2)}</span></label>
+    <label class="fe">目の大きさ <input type="range" min="0.75" max="1.20" step="0.01" value="${f.eyeSize ?? 0.9}" oninput="this.nextElementSibling.textContent=(+this.value).toFixed(2)" onchange="feSet('eyeSize',this.value)"> <span>${(f.eyeSize ?? 0.9).toFixed(2)}</span></label>
     <label class="fe">目の位置（上下） <input type="range" min="-4" max="4" step="1" value="${f.eyeY ?? 0}" oninput="this.nextElementSibling.textContent=this.value" onchange="feSet('eyeY',this.value)"> <span>${f.eyeY ?? 0}</span></label>
     <label class="fe">目の間隔 <input type="range" min="-3" max="3" step="1" value="${f.eyeX ?? 0}" oninput="this.nextElementSibling.textContent=this.value" onchange="feSet('eyeX',this.value)"> <span>${f.eyeX ?? 0}</span></label>
     <label class="fe">眉の傾き <input type="range" min="-2" max="2" step="1" value="${f.browTilt ?? 0}" oninput="this.nextElementSibling.textContent=this.value" onchange="feSet('browTilt',this.value)"> <span>${f.browTilt ?? 0}</span></label>
@@ -5593,7 +5716,7 @@ function drawFaceEdit() {
   </div></div>
   <p><button onclick="feSave()">保存</button> <button class="sub" onclick="openPlayer(faceEdit.id)">やめる</button></p>`);
 }
-function feSet(k, v) { const f = faceEdit.f; f[k] = typeof v === 'boolean' ? v : (k === 'eyeSize' || k === 'brow' || k === 'noseSize' || k === 'mouthSize' || k === 'browLen') ? parseFloat(v) : (k === 'eyeY' || k === 'eyeX' || k === 'browTilt' || k === 'noseY' || k === 'mouthY' || k === 'browY' || k === 'hair' || k === 'eye' || k === 'skin') ? parseInt(v, 10) : v; if (k === 'eyeSize') f.eyeSize = Math.min(1.20, Math.max(0.85, f.eyeSize)); if (k === 'eyeY') f.eyeY = Math.min(4, Math.max(-4, f.eyeY)); if (k === 'eyeX') f.eyeX = Math.min(3, Math.max(-3, f.eyeX));
+function feSet(k, v) { const f = faceEdit.f; f[k] = typeof v === 'boolean' ? v : (k === 'eyeSize' || k === 'brow' || k === 'noseSize' || k === 'mouthSize' || k === 'browLen') ? parseFloat(v) : (k === 'eyeY' || k === 'eyeX' || k === 'browTilt' || k === 'noseY' || k === 'mouthY' || k === 'browY' || k === 'hair' || k === 'eye' || k === 'skin' || k === 'tpl') ? parseInt(v, 10) : v; if (k === 'tpl') applyTpl(f, f.tpl); if (k === 'eyeSize') f.eyeSize = Math.min(1.20, Math.max(0.75, f.eyeSize)); if (k === 'eyeY') f.eyeY = Math.min(4, Math.max(-4, f.eyeY)); if (k === 'eyeX') f.eyeX = Math.min(3, Math.max(-3, f.eyeX));
     if (k === 'noseSize') f.noseSize = Math.min(1.3, Math.max(0.8, f.noseSize));
     if (k === 'mouthSize') f.mouthSize = Math.min(1.15, Math.max(0.85, f.mouthSize));
     if (k === 'noseY') f.noseY = Math.min(3, Math.max(-2, f.noseY));
@@ -5606,51 +5729,32 @@ function feSave() { const p = S.players.find(x => x.id === faceEdit.id); if (p) 
     save();
 } const id = faceEdit.id; faceEdit = null; render(); openPlayer(id); }
 /* ---------- v13.3 キャラメイク ---------- */
-/* ポジション・型は選べない（ゲーム性のため）。顔と名前だけを決める。 */
+/* v13.7：キャラメイクは既存選手の「顔と名前を変える」編集専用。新規入部は新入生とスカウトだけ。
+   ポジション・型は選べない（ゲーム性のため）。顔と名前だけを決める。 */
 let makeEdit = null;
-let makeBase = null, makeBaseForS = null;
-function makeEnsureBase() {
-    if (makeBase && makeBaseForS === S) return makeBase;
-    const ri_ = repInfo(S.school.rep);
-    makeBase = rookieSkills(genPlayer({ avg: ri(ri_.lo, ri_.hi), spread: 8, grade: 1, year: S.year, existing: S.players }));
-    makeBaseForS = S;
-    return makeBase;
-}
-function makeStartNew() {
-    const b = makeEnsureBase();
-    return { mode: 'new', base: b, f: JSON.parse(JSON.stringify(faceOf(b))), last: b.last, first: b.first, expr: 'normal' };
-}
-function openMake() { makeEdit = null; go('make'); }
 function openMakeFor(id) {
     const p = S.players.find(x => x.id === id);
     if (!p) return;
     makeEdit = { mode: 'edit', pid: id, f: JSON.parse(JSON.stringify(faceOf(p))), last: p.last, first: p.first, expr: 'normal' };
     go('make');
 }
-async function openMakeFromTitle() {
-    const s = await readSlot('auto');
-    if (!s) { await dlgAlert('キャラメイクにはセーブデータが必要です。まず「はじめから」でゲームを始めてください'); return; }
-    S = s; makeEdit = null; go('make');
-}
 function viewMake() {
     if (!S) return `<div class="px" style="max-width:720px;margin:20px auto"><h2>🎨 キャラメイク</h2><p>キャラメイクにはゲームのセーブが必要です。</p><button onclick="go('title')">タイトルへ</button></div>`;
-    if (!makeEdit || (makeEdit.mode === 'new' && makeEdit.base !== makeBase)) makeEdit = makeStartNew();
+    if (!makeEdit || makeEdit.mode !== 'edit') return `<div class="px" style="max-width:720px;margin:20px auto"><h2>🎨 キャラメイク</h2><p>キャラメイクは選手詳細から開いてください。</p><button onclick="go('players')">部員一覧へ</button></div>`;
     const m = makeEdit, f = m.f;
-    const cap = repInfo(S.school.rep).cap, room = Math.max(0, cap - S.players.length);
     const sel = (key, label, list, name) => `<label class="fe">${label} <select onchange="mkSet('${key}',this.value)">${list.map((v, i) => `<option value="${v}" ${String(f[key]) === String(v) ? 'selected' : ''}>${name(v, i)}</option>`).join('')}</select></label>`;
     const rng = (key, label, min, max, step, def) => { const v = f[key] ?? def, d = step < 1 ? 2 : 0; return `<label class="fe">${label} <input type="range" min="${min}" max="${max}" step="${step}" value="${v}" oninput="this.nextElementSibling.textContent=(+this.value).toFixed(${d})" onchange="mkSet('${key}',this.value)"> <span>${(+v).toFixed(d)}</span></label>`; };
     const chk = (key, label) => `<label class="fe"><input type="checkbox" ${f[key] ? 'checked' : ''} onchange="mkSet('${key}',this.checked)"> ${label}</label>`;
     const exprOpts = [['normal', 'ふつう'], ['happy', '笑顔'], ['serious', '真剣'], ['sad', '悲しい'], ['angry', '怒り'], ['blush', '照れ'], ['surprise', '驚き'], ['wink', 'ウィンク']];
-    const info = m.mode === 'new'
-        ? `<p class="sm">💡 ポジション・型はゲームが決めます（選べません・引き直しもできません）。入部後に選手詳細で確認できます。部員上限 ${cap}人（あと${room}人）。</p>`
-        : `<p class="sm">対象：${esc(m.last)} ${esc(m.first)}（${POS_JP[(S.players.find(x => x.id === m.pid) || {}).pos]}・型「${esc(archNameOf(S.players.find(x => x.id === m.pid) || {}))}」）— ポジション・型・能力値は変わりません。</p>`;
-    return `<div class="px" style="max-width:820px;margin:20px auto"><h2>🎨 キャラメイク ${m.mode === 'new' ? '— 新しい選手' : '— 顔と名前を変える'}</h2>
+    const info = `<p class="sm">対象：${esc(m.last)} ${esc(m.first)}（${POS_JP[(S.players.find(x => x.id === m.pid) || {}).pos]}・型「${esc(archNameOf(S.players.find(x => x.id === m.pid) || {}))}」）— ポジション・型はゲームが決めます（選べません）。能力値は変わりません。</p>`;
+    return `<div class="px" style="max-width:820px;margin:20px auto"><h2>🎨 キャラメイク — 顔と名前を変える</h2>
     ${info}
     <div class="row"><div class="mkprev">${faceSVG(f, m.expr, teamColor(), 200)}<br><canvas id="makeChibi" width="72" height="84"></canvas><br>
     <label class="fe">表情 <select onchange="mkExpr(this.value)">${exprOpts.map(([v, n]) => `<option value="${v}" ${m.expr === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
     <div class="col">
     <label class="fe">苗字 <input id="mk_last" size="8" value="${esc(m.last)}"></label>
     <label class="fe">名前 <input id="mk_first" size="8" value="${esc(m.first)}"></label>
+    ${sel('tpl', '基本顔', FACE_TPL.map((_, i) => i), (v, i) => FACE_TPL[i].name)}
     ${sel('style', '髪型', FACE.styles, v => FACE.styleName[v] || v)}
     ${sel('bangs', '前髪', FACE.bangs, v => FACE.bangsName[v] || v)}
     ${sel('hair', '髪色', FACE.hair.map((c, i) => i), (v, i) => FACE.hairName[i])}
@@ -5659,12 +5763,12 @@ function viewMake() {
     ${sel('skin', '肌色', FACE.skin.map((c, i) => i), (v, i) => FACE.skinName[i])}
     ${sel('acc', 'アクセサリー', FACE.acc, v => FACE.accName[v] || v)}
     ${sel('accColor', 'アクセサリーの色', ['#e8566b', '#4f7be0', '#f2b233', '#7bc96f', '#ffffff', '#9a6ee0', '#ff9ad5'], v => ({ '#e8566b': '赤', '#4f7be0': '青', '#f2b233': '黄', '#7bc96f': '緑', '#ffffff': '白', '#9a6ee0': '紫', '#ff9ad5': 'ピンク' })[v])}
-    ${sel('chin', 'あごの形', ['round', 'sharp', 'oval', 'square'], v => ({ round: '丸あご', sharp: 'シャープ', oval: '卵型', square: '四角あご' })[v])}
+    ${sel('chin', 'あごの形', ['round', 'oval', 'square'], v => ({ round: '丸あご', oval: '卵型', square: '四角あご' })[v])}
     ${sel('brow', '眉の太さ', [1.7, 2.4, 3], v => v + 'pt')}
     ${sel('nose', '鼻の形', FACE.nose, v => FACE.noseName[v] || v)}
     ${sel('mouth', '口の形', FACE.mouth, v => FACE.mouthName[v] || v)}
     ${sel('browShape', '眉の形', FACE.browShape, v => FACE.browShapeName[v] || v)}
-    ${rng('eyeSize', '目の大きさ', 0.85, 1.20, 0.01, 1.05)}
+    ${rng('eyeSize', '目の大きさ', 0.75, 1.20, 0.01, 0.9)}
     ${rng('eyeY', '目の位置（上下）', -4, 4, 1, 0)}
     ${rng('eyeX', '目の間隔', -3, 3, 1, 0)}
         ${rng('browTilt', '眉の傾き', -2, 2, 1, 0)}
@@ -5676,7 +5780,7 @@ function viewMake() {
     ${rng('browY', '眉の位置（上下）', -3, 3, 1, 0)}, 'アホ毛')} ${chk('mole', 'ほくろ')} ${chk('freckle', 'そばかす')}
     </div></div>
     <p><button class="sub" onclick="mkRandom()">🎲 ランダム</button>
-    <button class="big" onclick="mkSave()">${m.mode === 'new' ? '🌸 この顔で入部させる' : '保存'}</button>
+    <button class="big" onclick="mkSave()">保存</button>
     <button class="sub" onclick="mkCancel()">やめる</button></p>
     <p class="sm">ランダムは顔の全項目を振り直します。作った顔はセーブされ、再起動後も同じ顔になります。</p></div>`;
 }
@@ -5686,15 +5790,15 @@ function makeMounted() {
         if (!cv) return;
         const ctx = cv.getContext && cv.getContext('2d');
         if (!ctx) return;
-        const id = (makeEdit && makeEdit.mode === 'edit') ? makeEdit.pid : (makeEdit && makeEdit.base ? makeEdit.base.id : 'make');
+        const id = makeEdit ? makeEdit.pid : 'make';
         drawSprite(ctx, 36, 76, teamColor(), id, 0, 'idle', makeEdit && makeEdit.f);
     } catch (e) {}
 }
 function mkSet(k, v) {
     const m = makeEdit; if (!m) return;
     const f = m.f;
-    f[k] = typeof v === 'boolean' ? v : (k === 'eyeSize' || k === 'brow' || k === 'noseSize' || k === 'mouthSize' || k === 'browLen') ? parseFloat(v) : (k === 'eyeY' || k === 'eyeX' || k === 'browTilt' || k === 'noseY' || k === 'mouthY' || k === 'browY' || k === 'hair' || k === 'eye' || k === 'skin') ? parseInt(v, 10) : v;
-    if (k === 'eyeSize') f.eyeSize = Math.min(1.20, Math.max(0.85, f.eyeSize));
+    f[k] = typeof v === 'boolean' ? v : (k === 'eyeSize' || k === 'brow' || k === 'noseSize' || k === 'mouthSize' || k === 'browLen') ? parseFloat(v) : (k === 'eyeY' || k === 'eyeX' || k === 'browTilt' || k === 'noseY' || k === 'mouthY' || k === 'browY' || k === 'hair' || k === 'eye' || k === 'skin' || k === 'tpl') ? parseInt(v, 10) : v;
+    if (k === 'tpl') applyTpl(f, f.tpl); if (k === 'eyeSize') f.eyeSize = Math.min(1.20, Math.max(0.75, f.eyeSize));
     if (k === 'eyeY') f.eyeY = Math.min(4, Math.max(-4, f.eyeY));
     if (k === 'eyeX') f.eyeX = Math.min(3, Math.max(-3, f.eyeX));
     if (k === 'noseSize') f.noseSize = Math.min(1.3, Math.max(0.8, f.noseSize));
@@ -5719,14 +5823,6 @@ async function mkSave() {
         save(); const id = p.id; makeEdit = null; render(); openPlayer(id);
         return;
     }
-    const cap = repInfo(S.school.rep).cap;
-    if (S.players.length >= cap) { await dlgAlert(`部員の上限は${cap}人です。これ以上は入部させられません`); return; }
-    const p = m.base;
-    p.face = JSON.parse(JSON.stringify(m.f)); p.last = last; p.first = first;
-    S.players.push(p);
-    makeBase = null; makeBaseForS = null; makeEdit = null;
-    relineup(S); save(); go('players');
-    queueModal(`<h2>🌸 入部しました</h2><p>${esc(p.last)} ${esc(p.first)}（1年 ${POS_JP[p.pos]}・型「${esc(archNameOf(p))}」）が入部しました！</p><p class="sm">ポジションと型はゲームが決めました。顔と名前はキャラメイクで決めたものです。</p><button onclick="nextModal()">OK</button>`);
 }
 
 /* 試合中のカットイン（得点した選手の顔） */
@@ -6246,7 +6342,7 @@ function header() {
     const ri_ = repInfo(S.school.rep);
     const scoutAl = scoutActive(S) && S.scout && S.scout.points > 0;
     const main = [['home', '🏠', 'ホーム'], ['players', '👥', '部員'], ['order', '📋', 'オーダー'], ['tour', '🏆', '大会']];
-    const sec = [['menu', '📝', '個別メニュー'], ['scout', '🔍', 'スカウト', scoutAl], ...(S.shop ? [['shop', '🛒', '業者', true]] : []), ['items', '🎒', '持ち物'], ['mgr', '🗂', 'マネージャー'], ['facility', '🏗', '体育館', S.coupon], ['records', '📚', '記録'], ['album', '📖', 'アルバム'], ['ach', '🏅', '実績'], ['data', '💾', 'データ'], ['make', '🎨', 'キャラメイク'], ['settings', '⚙', '設定']];
+    const sec = [['menu', '📝', '個別メニュー'], ['scout', '🔍', 'スカウト', scoutAl], ...(S.shop ? [['shop', '🛒', '業者', true]] : []), ['items', '🎒', '持ち物'], ['mgr', '🗂', 'マネージャー'], ['facility', '🏗', '体育館', S.coupon], ['records', '📚', '記録'], ['album', '📖', 'アルバム'], ['ach', '🏅', '実績'], ['data', '💾', 'データ'], ['settings', '⚙', '設定']];
     const btn = ([k, i, n, al], cls) => `<button class="${ui.screen === k ? 'cur' : 'sub'} ${cls || ''}" onclick="go('${k}')" aria-label="${n}へ移動"${ui.screen === k ? ' aria-current="page"' : ''}><span class="ni">${i}</span><span class="nl">${n}</span>${al ? '<i class="dot"></i>' : ''}</button>`;
     let nav;
     if (S.pendingApplicants)
@@ -6287,7 +6383,7 @@ function viewTitle() {
   ${sv ? `<p><b>${esc(sv.school)}</b> ／ ${sv.year}年目 ${sv.date}<br><span class="sm">公式戦${sv.w}勝${sv.l}敗・保存 ${fmtTime(sv.savedAt)}</span></p><button class="big" onclick="continueGame()">▶ つづきから</button><br>` : ''}
   ${any ? `<button class="big sub" onclick="go('load')">📂 ロード</button><br>` : `<p class="sm">📥 書き出したセーブがあれば：<input type="file" accept=".json" onchange="uiImportFile(this)"></p>`}
   <button class="big ${sv ? 'sub' : ''}" onclick="go('setup')">✚ はじめから</button>
-  <button class="big sub" onclick="openHelp('home')">📖 遊び方</button> <button class="big sub" onclick="openMakeFromTitle()">🎨 キャラメイク</button>
+  <button class="big sub" onclick="openHelp('home')">📖 遊び方</button>
   ${sv ? '<p class="sm">※「はじめから」で始めると、今のオートセーブは「1つ前のオートセーブ」に退避されます</p>' : ''}</div></div>`;
 }
 async function continueGame() { const s = await readSlot('auto'); if (!s) {
@@ -6324,7 +6420,7 @@ async function startNewGame() {
 function recruitTable(list) {
     if (!list.length)
         return '<p>なし</p>';
-    return `<table><tr><th>名前</th><th>Pos</th><th>身長</th><th>総合</th><th>成長</th><th>性格</th><th>特殊能力</th></tr>${list.map(p => `<tr><td class="nmc">${avatar(p, 32, 'smile')} ${esc(p.last)} ${esc(p.first)}</td><td>${posLabel(p)}</td><td>${p.height}</td><td>${rk(overall(p))} ${overall(p)}</td><td>${p.growth}</td><td>${p.pers}</td><td style="white-space:normal;text-align:left">${skTagsHtml(p, true)}</td></tr>`).join('')}</table>`;
+    return `<table><tr><th>名前</th><th>Pos</th><th>身長</th><th>総合</th><th>成長</th><th>性格</th><th>特殊能力</th></tr>${list.map(p => `<tr><td class="nmc">${avatar(p, 32, 'smile')} ${esc(p.last)} ${esc(p.first)}${p.genius ? '<span class="genius-badge">✨天才</span>' : ''}</td><td>${posLabel(p)}</td><td>${p.height}</td><td>${rk(overall(p))} ${overall(p)}</td><td>${p.growth}</td><td>${p.pers}</td><td style="white-space:normal;text-align:left">${skTagsHtml(p, true)}</td></tr>`).join('')}</table>`;
 }
 /* ---------- ホーム ---------- */
 /* ---------- ホーム（v10：日単位カレンダーすごろく） ---------- */
@@ -7686,7 +7782,7 @@ function skTagsHtml(p, small) {
 function skCountHtml(p) { const c = skillCounts(p); return (c.g ? `<span class="skc g" title="金の特殊能力：${c.g}個" aria-label="金の特殊能力${c.g}個">${c.g}</span>` : '') + (c.b ? `<span class="skc b" title="青の特殊能力：${c.b}個" aria-label="青の特殊能力${c.b}個">${c.b}</span>` : '') + (c.r ? `<span class="skc r" title="赤の特殊能力：${c.r}個" aria-label="赤の特殊能力${c.r}個">${c.r}</span>` : '') || '<span class="sm">-</span>'; }
 function openSkillBook() {
     const cats = Object.keys(CAT_JP);
-    showModal(`<h2>📖 特殊能力一覧</h2><p class="sm">🟦青特：関連能力が60以上で毎月まれに習得 ／ 🟨金特：青特を持ち関連能力85以上で昇格（覚醒イベントでも習得） ／ 🟥赤特：入部時に付いていることがある。条件を満たすと克服</p>
+    showModal(`<h2>📖 特殊能力一覧</h2><p class="sm">🟦青特：関連能力が60以上で毎月まれに習得 ／ 🟨金特：青特を持ち関連能力85以上で昇格（覚醒イベントでも習得） ／ 🟥赤特：入部時に付いていることがある。条件を満たすと克服<br>✨天才型の選手は青特の習得率と金特への昇格率が2倍、覚醒しやすい（経験値も×1.5）</p>
   ${cats.map(c => `<h3>${CAT_JP[c]}</h3><table><tr><th>青特</th><th>金特</th><th>対象</th><th>関連能力</th><th style="text-align:left">効果</th></tr>${SKILLS.filter(d => d.cat === c).map(d => `<tr><td>${skTag(d.id)}</td><td>${skTag(d.gid)}</td><td class="sm">${d.pos ? d.pos.join('・') : '全員'}</td><td class="sm">${d.stats[0] === 'all' ? '全能力平均' : d.stats.map(k => STAT_JP[k]).join('・')}</td><td class="sm" style="text-align:left;white-space:normal">${esc(d.desc)}</td></tr>`).join('')}</table>`).join('')}
   <h3>赤特（マイナス）</h3><table><tr><th>赤特</th><th style="text-align:left">効果</th><th style="text-align:left">克服</th></tr>${RED_SKILLS.map(d => `<tr><td>${skTag(d.id)}</td><td class="sm" style="text-align:left">${esc(d.desc)}</td><td class="sm" style="text-align:left">${esc(d.fix)}</td></tr>`).join('')}</table>
   <button onclick="closeModal()">閉じる</button>`);
@@ -7703,10 +7799,10 @@ function viewAdmit() {
     POS.forEach(q => cnt[q] = activePlayers(S).filter(p => p.pos === q).length);
     return header() + `<div class="px"><h2>🌸 入部選考（${S.year}年目 4月）</h2>
   <p>入部希望者が <b>${list.length}人</b> 来ました。部員の上限は <b>${cap}人</b>（評判「${repInfo(S.school.rep).name}」）で、現在 <b>${S.players.length}人</b> なので <b>あと${room}人</b> 受け入れられます。</p>
-  <p class="sm">現在のポジション人数：${POS.map(q => `${q} ${cnt[q]}人`).join(' ／ ')}　※試合には最低6人、リベロを入れるなら7人必要です</p>
+  <p class="sm">現在のポジション人数：${POS.map(q => `${q} ${cnt[q]}人`).join(' ／ ')}　※試合には最低6人、リベロを入れるなら7人必要です<br>✨天才型の生徒がいたら見逃さないで！（経験値×1.5・特能の習得／昇格率×2）</p>
   <table><tr><th>入部</th><th>名前</th><th>Pos</th><th>身長</th>${STATS.map(s => `<th>${STAT_JP[s]}</th>`).join('')}<th>総合</th><th>成長</th><th>性格</th><th>特殊能力</th></tr>
   ${list.map(p => `<tr class="click" onclick="toggleAdmit('${p.id}')" style="${admitSel.has(p.id) ? 'background:#fff3a0' : ''}"><td><input type="checkbox" ${admitSel.has(p.id) ? 'checked' : ''} onclick="event.stopPropagation();toggleAdmit('${p.id}')"></td>
-  <td class="nmc">${avatar(p, 34)} ${esc(p.last)} ${esc(p.first)}<br><span class="sm">「${esc(joinLine(p))}」</span></td><td>${posLabel(p)}</td><td>${p.height}</td>${STATS.map(s => `<td>${rk(p.stats[s])}<span class="sm">${p.stats[s]}</span></td>`).join('')}
+  <td class="nmc">${avatar(p, 34)} ${esc(p.last)} ${esc(p.first)}${p.genius ? '<span class="genius-badge">✨天才</span>' : ''}<br><span class="sm">「${esc(joinLine(p))}」</span></td><td>${posLabel(p)}</td><td>${p.height}</td>${STATS.map(s => `<td>${rk(p.stats[s])}<span class="sm">${p.stats[s]}</span></td>`).join('')}
   <td>${rk(overall(p))}${overall(p)}</td><td>${p.growth}</td><td>${p.pers}</td><td style="white-space:normal;text-align:left">${skTagsHtml(p, true)}</td></tr>`).join('')}</table>
   <p>選択中：<b class="${admitSel.size > room ? 'loss' : ''}">${admitSel.size}</b> / ${room}人</p>
   <button class="big" ${admitSel.size > room ? 'disabled' : ''} onclick="confirmAdmit()">✅ この${admitSel.size}人を入部させる</button>
@@ -7749,7 +7845,7 @@ function viewScout() {
             const key = Object.keys(POS_W[p.pos]);
             const st = s => lvl >= 3 ? `${rk(p.stats[s])}<span class="sm">${p.stats[s]}</span>` : lvl >= 2 && key.includes(s) ? rk(p.stats[s]) : '<span class="sm">?</span>';
             const res = pr.res === 'ok' ? '<b class="gain">入部決定</b>' : pr.res === 'ng' ? '<span class="loss">辞退</span>' : '';
-            return `<tr style="${pr.offered ? 'background:#fff3a0' : ''}"><td class="sm">${esc(pr.ms)}</td><td class="nmc">${lvl >= 1 ? avatar(p, 30, 'normal') : '<span class="av av-q">?</span>'} ${esc(p.last)} ${esc(p.first)}${pr.star && lvl >= 2 ? ' ⭐' : ''}</td>
+            return `<tr style="${pr.offered ? 'background:#fff3a0' : ''}"><td class="sm">${esc(pr.ms)}</td><td class="nmc">${lvl >= 1 ? avatar(p, 30, 'normal') : '<span class="av av-q">?</span>'} ${esc(p.last)} ${esc(p.first)}${pr.star && lvl >= 2 ? ' ⭐' : ''}${p.genius && lvl >= 2 ? ' <span class="genius-badge">✨天才の片鱗</span>' : ''}</td>
       <td>${lvl >= 1 ? p.pos : '?'}</td><td>${lvl >= 1 ? p.height : '?'}</td><td>${'●'.repeat(lvl)}${'○'.repeat(3 - lvl)}</td>
       ${STATS.map(s => `<td>${st(s)}</td>`).join('')}<td>${lvl >= 3 ? rk(overall(p)) + overall(p) : lvl >= 2 ? rk(overall(p)) : '?'}</td><td>${lvl >= 3 ? p.growth : '?'}</td>
       <td style="white-space:normal;text-align:left;max-width:180px">${lvl >= 3 ? skTagsHtml(p, true) : '<span class="sm">?</span>'}</td>
@@ -7757,7 +7853,7 @@ function viewScout() {
       <td>${res || (act ? `<button class="mini sub" ${sc.points <= 0 || lvl >= 3 ? 'disabled' : ''} onclick="doScoutView('${pr.id}')">👀 視察</button>
       ${pr.offered ? `<button class="mini red" onclick="doOffer('${pr.id}',false)">取消</button>` : `<button class="mini" ${lvl < 1 || offered >= slots ? 'disabled' : ''} onclick="doOffer('${pr.id}',true)">🤝 推薦</button>`}` : '')}</td></tr>`;
         }).join('')}</table>
-    <p class="sm">⭐は注目選手（能力が高いが、他校との競合で成功率が下がる）。2回目の視察で判明します。</p>`;
+    <p class="sm">⭐は注目選手（能力が高いが、他校との競合で成功率が下がる）。2回目の視察で判明します。✨天才の片鱗は天才型の候補（経験値×1.5・特能の習得／昇格率×2）で、2回目の視察で判明します。</p>`;
     }
     return header() + `<div class="px"><h2>🔍 スカウト</h2>${body}
   ${signed.length ? `<h3>来春の推薦入部内定者</h3>${recruitTable(signed)}` : ''}</div>`;
@@ -8433,9 +8529,9 @@ function playerCardHtml(p, starterIds) {
     const keys = POS_KEY_STATS[p.pos] || STATS.slice(0, 4);
     const starter = starterIds.has(p.id);
     const bars = keys.map(s => `<div class="pbar-row"><span class="pl key">${STAT_JP[s]}</span><div class="pbar" role="img" aria-label="${STAT_JP[s]} ${p.stats[s]}"><i style="width:${p.stats[s]}%"></i></div>${rk(p.stats[s])}<b>${p.stats[s]}</b></div>`).join('');
-    return `<article class="pcard ${p.retired ? 'ret' : ''}" tabindex="0" role="button" aria-label="${esc(p.last)} ${esc(p.first)}、${POS_JP[p.pos]}、総合${ovr}の詳細を開く" onclick="openPlayer('${p.id}')" onkeydown="if(event.key==='Enter'){openPlayer('${p.id}')}">
+    return `<article class="pcard ${p.retired ? 'ret' : ''}${p.genius ? ' genius' : ''}" tabindex="0" role="button" aria-label="${esc(p.last)} ${esc(p.first)}、${POS_JP[p.pos]}、総合${ovr}の詳細を開く" onclick="openPlayer('${p.id}')" onkeydown="if(event.key==='Enter'){openPlayer('${p.id}')}">
   <div class="pc-top"><div class="pc-face">${portrait(p, 84)}</div><canvas class="pchibi" width="72" height="84" data-pid="${p.id}" aria-hidden="true"></canvas>
-  <div class="pc-id"><div class="pc-name">${esc(p.last)} ${esc(p.first)}${p.id === S.captainId ? ' ©️' : ''}</div>
+  <div class="pc-id"><div class="pc-name">${esc(p.last)} ${esc(p.first)}${p.id === S.captainId ? ' ©️' : ''}${p.genius ? '<span class="genius-badge">✨天才</span>' : ''}</div>
   <div class="pc-sub">${p.grade}年 ${POS_JP[p.pos]}${p.sub ? '/' + POS_JP[p.sub] : ''} ・ ${p.height}cm ・ ${esc(p.pers)}</div>
   <span class="pc-arch" title="${arch ? esc(arch.desc) : 'v13.1 より前に作られた選手（型なし）'}">🏷 ${esc(archNameOf(p))}</span>${p.title ? `<div class="ttl">「${esc(p.title)}」</div>` : ''}</div>
   <div class="pc-ovr"><span class="sm">総合</span>${rk(ovr)}<b>${ovr}</b></div></div>
@@ -8476,7 +8572,7 @@ function viewPlayers() {
     list.sort(by[o.sort]);
     const sel = (k, opts) => `<select aria-label="${k}" onchange="setPlist('${k}',this.value)">${opts.map(([v, n]) => `<option value="${v}" ${String(o[k]) === String(v) ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
     return header() + `<div class="px"><h2>👥 部員一覧（カードをタップで詳細）</h2>
-  <p><button class="sub" onclick="openSkillBook()">📖 特殊能力一覧</button> <button class="sub" onclick="go('make')">🎨 キャラメイク</button> <span class="sm">特殊：<span class="skc g">金</span><span class="skc b">青</span><span class="skc r">赤</span>の数 ／ バーはポジションの主要能力（★は最重要）</span></p>
+  <p><button class="sub" onclick="openSkillBook()">📖 特殊能力一覧</button> <span class="sm">特殊：<span class="skc g">金</span><span class="skc b">青</span><span class="skc r">赤</span>の数 ／ バーはポジションの主要能力（★は最重要）</span></p>
   <div class="pctrl" role="group" aria-label="並べ替えと絞り込み">
   <label>並べ替え ${sel('sort', [['ovr', '総合順'], ['grade', '学年順'], ['pos', 'ポジション順'], ['name', '名前順']])}</label>
   <label>ポジション ${sel('pos', [['all', '全ポジション'], ['OH', 'アウトサイド'], ['MB', 'ミドル'], ['OP', 'オポジット'], ['S', 'セッター'], ['L', 'リベロ']])}</label>
@@ -8492,7 +8588,8 @@ function openPlayer(id) {
         return;
     const ex = exprOf(p);
     showModal(`<div style="float:right;text-align:center;margin:0 0 6px 10px">${portrait(p, 150)}<br><span class="sm">${EXPR_NOTE[ex]}</span><br><button class="mini sub" onclick="openFaceEdit('${p.id}')">✏️ 顔を編集</button><br><button class="mini sub" onclick="openMakeFor('${p.id}')">🎨 キャラメイクで変える</button></div>
-  <h2>${esc(p.last)} ${esc(p.first)}（${p.grade}年 ${POS_JP[p.pos]}）</h2>
+  <h2>${esc(p.last)} ${esc(p.first)}（${p.grade}年 ${POS_JP[p.pos]}）${p.genius ? '<span class="genius-badge">✨天才</span>' : ''}</h2>
+  ${p.genius ? '<p><span class="genius-badge">✨天才型</span> <span class="sm">経験値×1.5・特殊能力の習得率と金特への昇格率が2倍・覚醒しやすい</span></p>' : ''}
   ${p.title ? `<p class="ttl" style="font-size:15px">🏷 二つ名「${esc(p.title)}」</p>` : ''}
   ${(() => {
         const pf = profileOf(p), r = recOf(p);
@@ -8500,7 +8597,7 @@ function openPlayer(id) {
   <p class="sm">公式戦通算：${r.g}試合 ${r.pts}得点（アタック${r.kill}／ブロック${r.blk}／サーブ${r.ace}）</p>`;
     })()}
   <p>苗字 <input id="e_last" size="6" value="${esc(p.last)}"> 名前 <input id="e_first" size="6" value="${esc(p.first)}"> <button class="sub" onclick="const n=genName(S.players);$('e_last').value=n.last;$('e_first').value=n.first">🎲</button></p>
-  <p>${p.id === S.captainId ? '<span class="tag" style="background:#ffd84a">©️ キャプテン</span>' : ''}<span class="tag">身長 ${p.height}cm</span><span class="tag">${p.hand}利き</span><span class="tag">性格：${p.pers}</span><span class="tag">型：${esc(archNameOf(p))}</span><span class="tag">成長：${p.growth}</span><span class="tag">出場 ${p.matches}試合</span><span class="tag">調子 ${COND[p.condition]}</span><span class="tag">体力 ${STA_NAME[staLv(p)]}</span><span class="tag">本 ${p.booksUsed || 0}/${BOOK_MAX}冊</span></p>
+  <p>${p.id === S.captainId ? '<span class="tag" style="background:#ffd84a">©️ キャプテン</span>' : ''}<span class="tag">身長 ${p.height}cm</span><span class="tag">${p.hand}利き</span><span class="tag">性格：${p.pers}</span>${p.genius ? '<span class="tag" style="background:#ffd84a">✨天才型</span>' : ''}<span class="tag">型：${esc(archNameOf(p))}</span><span class="tag">成長：${p.growth}</span><span class="tag">出場 ${p.matches}試合</span><span class="tag">調子 ${COND[p.condition]}</span><span class="tag">体力 ${STA_NAME[staLv(p)]}</span><span class="tag">本 ${p.booksUsed || 0}/${BOOK_MAX}冊</span></p>
   <table><tr><th>能力</th><th>値</th><th>次まで</th></tr>${STATS.map(s => `<tr><td>${STAT_JP[s]}</td><td>${rk(p.stats[s])} ${p.stats[s]}</td><td><div class="bar" style="width:140px;display:inline-block"><i style="width:${Math.min(100, p.exp[s] / needExp(p.stats[s]) * 100)}%"></i></div></td></tr>`).join('')}</table>
   <h3 style="margin-top:8px">ポジション適性</h3>
   <p>${POS.map(q => `<span class="tag">${POS_JP[q]} <b>${APT_MARK[p.apt[q]]}</b>${p.apt[q] < 3 ? ` <span class="sm">${Math.floor(p.aptExp[q] || 0)}/${APT_NEED}</span>` : ''}</span>`).join('')}</p>
