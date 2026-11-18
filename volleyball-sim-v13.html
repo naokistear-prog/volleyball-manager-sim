@@ -496,6 +496,29 @@ img{max-width:100%;height:auto}
   .score .pt{font-size:23px;min-width:34px}
   .cal .cell{height:44px}
 }
+/* ===== v20 追加修正：ホーム（すごろく）の小窓対応（手札が右端で切れる問題） =====
+   原因：.hduo の縦積み切替は720pxまでしかなく、.home の左列（max-content）が .hduo の
+   自然幅（カレンダー7列＋手札5枚で約1060px）をそのまま要求するため、中間幅〜やや広い
+   窓でも右列と合わせて溢れ、#app の overflow-x:clip で手札の右端が切り捨てられていた。
+   ・.hduo の両カラムに min-width:0 を与え、手札カードをカラム幅に対して流動化する
+     （並び幅でも3〜5枚が絶対に切れない。カードの上限幅92pxは従来どおり）。
+   ・中間幅（721〜1100px）では縦積みに切り替え、手札をカレンダー直下の帯として画面下に
+     sticky 固定し、カレンダーを見ながら手札を選べるようにする。
+     （〜720px は既存の sticky パターンのまま。下部固定ナビがあるため bottom は触らない） */
+.hduo-cal,.hduo-hand{min-width:0}
+.hduo-hand .hand{max-width:100%}
+.hduo-hand .card{flex:1 1 0;min-width:0;max-width:92px}
+.hduo-hand .card .ck{max-width:100%;word-break:break-all}
+@media (max-width:720px){
+  .hduo-hand .card{max-width:none}
+}
+@media (min-width:721px) and (max-width:1100px){
+  .hduo{display:block}
+  .hduo-hand{position:sticky;bottom:0;z-index:20;background:var(--panel);border-top:3px solid #000;padding-top:4px;margin-top:6px}
+  .hduo-hand .hand{flex-wrap:nowrap;margin-top:6px}
+  .hduo-hand .card{max-width:none;height:100px}
+  .hduo-hand .card .n{font-size:32px}
+}
 </style>
 </head>
 <body>
@@ -539,7 +562,11 @@ img{max-width:100%;height:auto}
    収まる（はみ出す場合はモーダル内スクロール）。
    旧セーブは ensureV20() で S.reincarnatedWorldSeen / S.ihRetireChoiceYear と
    p.titleBase / p.titleScope（旧 p.title から学校名を剥がして移行）/ p.ihRetired /
-   p.reincWorld を補完。SAVE_VERSION は17のまま（セーブ互換維持）。音は入れない。 */
+   p.reincWorld を補完。SAVE_VERSION は17のまま（セーブ互換維持）。音は入れない。
+   v20 マイナー更新（2026-11-18）：ホーム（すごろく）の小窓対応。.hduo の縦積み切替を
+   1100px までに引き上げ（721〜1100px は手札をカレンダー直下の帯として画面下に sticky
+   固定）、並び幅でも手札カードをカラム幅に対して流動化し、右端で切れないようにした。
+   sw キャッシュは vbcoach-v20-2。GAME_VERSION は '20' のまま。 */
 /* ===== v19 変更履歴（2026-11-18） =====
    大会表彰を追加：公式戦の大会（県大会・全国大会・世界高校選手権）が終わるたびに、大会中の
    個人成績からベスト6（S1・OH2・MB2・OP1）・ベストリベロ・新人王（1年生）を、自校・相手校の
