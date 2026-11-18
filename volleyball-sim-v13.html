@@ -478,6 +478,10 @@ label.fe input[type=range]{width:170px;vertical-align:middle}
    画角のイラストは中央クロップで縦横比を 256:329 に統一してから埋め込んだ。表示の仕組み
    （portraitImgOf の reincName キー・卒業生引き継ぎ・名前一致フォールバック）は変更なし。
    通常選手と、ちびスプライト等のキャンバス描画は従来どおり顔データ（SVG）を使う。
+   転生選手も確率で天才になるよう変更：genReincarnatedPlayer() の天才除外をやめ、通常の
+   新入生・スカウトと同じ約5%で p.genius が付くようにした（転生と天才は別フラグで両立し、
+   両立時は経験値×1.5などの天才効果も通常どおり効き、バッジも両方表示される。ユーザー
+   決定 2026-11-18。sw.js のキャッシュ名のみ vbcoach-v18-2 に更新）。
    SAVE_VERSION は17のまま（セーブ互換維持）。音は入れない。 */
 /* ===== v17 変更履歴（2026-11-18） =====
    転生選手を追加：実在の名選手29人（現役日本代表18人＋レジェンド11人）が1年生として入学する。
@@ -3749,7 +3753,8 @@ function takeReincarnatedDef(s, pos) {
 }
 /* 選手データから転生元の定義を引く（キャラメイクで名前を変えても reincName で辿れる） */
 function reincDefOf(p) { return p && p.reincName ? REINCARNATED.find(d => d.name === p.reincName) || null : null; }
-/* 転生選手の実体を生成する（1年生・能力と特能と顔はデータどおり・赤特なし・天才にはしない） */
+/* 転生選手の実体を生成する（1年生・能力と特能と顔はデータどおり・赤特なし。
+   天才判定は通常の新入生と同じ約5%で入り、転生フラグと両立する） */
 function genReincarnatedPlayer(s, def, existing) {
     const p = genPlayer({ pos: def.pos, avg: 30, spread: 8, grade: 1, year: s.year, existing: existing || s.players });
     p.last = def.last;
@@ -3758,7 +3763,7 @@ function genReincarnatedPlayer(s, def, existing) {
     p.stats = { spike: def.stats.spike, jump: def.stats.jump, block: def.stats.block, receive: def.stats.receive, serve: def.stats.serve, toss: def.stats.toss, stamina: def.stats.stamina, mental: def.stats.mental };
     p.skills = def.skills.slice();
     p.face = REINCARNATED_FACES[def.name] ? JSON.parse(JSON.stringify(REINCARNATED_FACES[def.name])) : genFace(p.id);
-    p.genius = false; // 天才とは別フラグ（経験値×1.5などの天才効果は付かない）
+    p.genius = R() < 0.05; // v18：転生選手も通常の新入生と同じ約5%で天才型になる（転生とは別フラグで両立し、天才効果も通常どおり効く。ユーザー決定 2026-11-18）
     p.reincarnated = true;
     p.reincName = def.name;
     if (def.skills.includes('mood')) p.pers = '明るい'; // ムードメーカーの発動条件（性格：明るい）に合わせる
