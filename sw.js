@@ -7,7 +7,7 @@
    ページ側がユーザーに通知してから SKIP_WAITING で切り替える。 */
 'use strict';
 
-var CACHE_NAME = 'vbcoach-v21-1';
+var CACHE_NAME = 'vbcoach-v22-1';
 var CORE = [
   './volleyball-sim-v13.html',
   './manifest.json',

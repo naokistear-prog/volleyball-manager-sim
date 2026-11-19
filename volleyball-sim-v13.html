@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>女子バレー部監督シム v21</title>
+<title>女子バレー部監督シム v22</title>
 <style>
 
 :root{--bg:#22264d;--panel:#f6f1dc;--ink:#1a1a1a;--team:#d8343a;--accent:#ffd84a;--dark:#11132b}
@@ -528,6 +528,49 @@ img{max-width:100%;height:auto}
 "use strict";
 /* v13正本。直接編集するファイルです（src/data/*.json からの自動生成には戻らない）。
    v12-4 の凍結コピーは v12-4-frozen.html に保存済み。 */
+/* ===== v22 変更履歴（2026-11-19） =====
+   世界大会の相手を国らしくした：従来は国内ライバルと同じ生成（genRivalRoster）で
+   日本人の名前プールと日本の顔のままだった。WORLD_NAMES（15か国×姓20・名20、
+   カタカナの一般的な名前の組み合わせ。実在選手のフルネームの丸写しはなし）と
+   WORLD_FACE_PROFILE（既存の肌・髪・瞳パレットへの国別サンプリング重み）を新設し、
+   genWorldTeams で applyWorldIdentity が名前と顔の色インデックスを付け替える。
+   国内の生成には一切触れていない。顔色は描画時にインデックスから決まるため、
+   付け替えだけで試合画面・相手詳細の見た目が国らしくなる。
+   ベスト6の偏りを修正：原因を実測で確定した。他校同士の推定スタッツ
+   （fabTourMatchStats）が実スタッツ（m.an）と乖離していた（1試合・チーム合計：
+   エース 実2.2→推定3.5、ディグ 実34.3→推定24.0、レセプション 実約25.7→推定約52で
+   セッターが吸いすぎ）。さらに選考が総量のみだったため、試合数の多い決勝進出チーム、
+   特に優勝校が独占していた（実測：優勝校が平均6.25/7枠、全7枠独占が48%）。
+   対策は3つ。①推定スタッツを実スタッツ水準に較正（配分量とポジションウェイト、
+   レセプションは専用ウェイト RW を新設）。較正後：キル 実29.7→推定31.0、ブロック
+   7.5→8.0、エース 2.0→2.3、ディグ 39.8→34.5。②選考スコアを総量50%＋
+   1試合あたり率50%（率側は最大試合数 G でスケール）のブレンドにした
+   （computeTourAwards）。③ベスト6＋ベストリベロ合計で同一チーム最大3人までの
+   上限を新設（新人王は対象外）。上限で空いた枠は上限を外した次点→従来の
+   総合スコア補充の順で埋める。修正後の実測（60大会）：全7枠独占 0回、
+   同一チーム最大は平均2.97枠（上限どおり）、優勝校は平均2.05枠、自校は平均1.48枠。
+   対戦相手のチームアーキタイプ（型）を追加：相手生成時に6種（エース絶対型／
+   クイックコンビ型／ブロック堅守型／レシーブ粘り型／サーブ圧力型／バランス型）から
+   1つ割り当て（team.arch、pickTeamArch）、能力の再配分（applyArchStats：突出と
+   抑制を対にして総合力は不変）と特能のカテゴリバイアス（applyArchSkills：主役が
+   型のカテゴリの青特を持たなければ入れ替え。個数は不変）で色を付ける。
+   対象は県ライバル・全国・世界の全生成で、世界大会は国別の型重み（archW）と
+   国別補正を併用する。aiTactic は型の作戦を65%で優先するため、型が試合内容に
+   表れる。実測（str62・各型40チーム）：総合力はバランス型73.31に対し全型
+   73.70〜74.36（差+1.05以内）。バイアス方向：エース型はエースのスパイクが他の
+   OH/OP平均より+21.96（バランス型は+6.83）、クイック型はSトス88.8・MBスパイク
+   73.6（バランス型82.3・67.9）、ブロック型はMBブロック78.6（同72.3）、レシーブ型は
+   Lレシーブ94.0・OHレシーブ74.0（同88.4・68.1）、サーブ型はスタメン平均サーブ
+   67.5（同61.3）。試合傾向（型の作戦固定・30試合）：エース型のエース攻撃占有率
+   49.0%（バランス同士27.4%）、クイック型のMB攻撃参加率28.9%（同21.5%）、
+   レシーブ型の試合は1セットあたり攻撃数63.1（同56.9＝ラリーが長い）。
+   試合前のアナリスト分析を追加：前評判画面に相手の型の名前・1行説明・要注意選手
+   （実際のロスターから archKeyPlayers で選出）・戦術ヒントを表示する（analystInfo）。
+   偵察済み or ビデオセットありのときは詳細版（要注意選手の武器の能力値と特能）まで
+   出し、未偵察なら概要のみ。相手チーム名の横と試合中の相手パネルにも型ラベルを
+   表示する。旧セーブの生成済みチームは arch を持たないため 'balance' 扱い
+   （teamArchOf のフォールバック）で、マイグレーションは不要。
+   SAVE_VERSION は17のまま（セーブ互換維持）。音は入れない。 */
 /* ===== v21 変更履歴（2026-11-18） =====
    難易度設定を追加：設定画面で 標準／ハード／鬼 を選べる（S.difficulty に保存し、
    いつでも変更できる）。効くのは相手チームの生成時だけで、生成済みの相手は変わらない。
@@ -809,7 +852,7 @@ img{max-width:100%;height:auto}
      全画面の完全スクリーンリーダー対応は v13 の必須とせず、残りは v14 の課題（CHANGELOG参照）。
      音は入れない。 */
 const DATA = { "economy": { "FACILITIES": [{ "id": "gym", "name": "体育館の優先使用権", "icon": "🏟️", "price": 500, "lv": 5, "desc": "「体育館かぶり」が起きなくなる。体育館レベル+5" }, { "id": "clubroom", "name": "部室改装", "icon": "🛋️", "price": 200, "desc": "調子が下がりにくくなり、悪いことマスも起きにくくなる" }, { "id": "trainer", "name": "トレーナー契約", "icon": "🩺", "price": 350, "annual": true, "desc": "ケガの確率 -30%（契約した年度のみ有効・毎年更新）" }], "EQUIPS": [{ "id": "ballmachine", "name": "ボールマシン", "icon": "⚙️", "price": 1000, "max": 30, "lv": 3, "kind": "receive", "up": "強打レシーブ", "desc": "「強打レシーブ」カードが出るようになる" }, { "id": "target", "name": "サーブターゲット", "icon": "🎯", "price": 1000, "max": 30, "lv": 3, "kind": "serve", "up": "狙い打ちサーブ", "desc": "「狙い打ちサーブ」カードが出るようになる" }, { "id": "weight", "name": "ウエイトセット", "icon": "🏋️", "price": 1000, "max": 30, "lv": 3, "kind": "train", "up": "ウエイト", "desc": "「ウエイト」カードが出るようになる" }, { "id": "icebath", "name": "アイスバス", "icon": "🧊", "price": 1000, "max": 30, "lv": 3, "kind": "rest", "up": "回復ケア", "desc": "「回復ケア」カードが出るようになる。休養の回復量+50%" }, { "id": "blockmachine", "name": "ブロックマシン", "icon": "🧱", "price": 2000, "max": 40, "lv": 4, "kind": "block", "up": "ブロック強化練", "desc": "「ブロック強化練」カードが出るようになる" }, { "id": "quickmachine", "name": "速攻マシン", "icon": "⚡", "price": 2000, "max": 40, "lv": 4, "kind": "spike", "up": "速攻練習", "desc": "「速攻練習」カードが出るようになる" }, { "id": "tosstrainer", "name": "トストレーナー", "icon": "🙌", "price": 2000, "max": 40, "lv": 4, "kind": "toss", "up": "高速トス練", "desc": "「高速トス練」カードが出るようになる" }, { "id": "video", "name": "ビデオセット", "icon": "📹", "price": 2000, "max": 40, "lv": 4, "kind": "mental", "up": "映像分析", "desc": "「映像分析」カードが出る。練習試合の経験値+20%・試合中に相手の特殊能力が見える" }], "ITEMS": { "sch_up": { "name": "スケジュール強化指南書", "icon": "📘", "price": 300, "cat": "進行", "desc": "手札の数字を全部+1（最大5。練習以外は1のまま）" }, "sch_down": { "name": "スケジュール緩和指南書", "icon": "📗", "price": 300, "cat": "進行", "desc": "手札の数字を全部-1（最小1）" }, "sch_max": { "name": "スケジュール強化極意書", "icon": "📙", "price": 500, "cat": "進行", "desc": "手札の数字が全部5になる（練習以外は1のまま）" }, "sch_min": { "name": "スケジュール緩和極意書", "icon": "📓", "price": 300, "cat": "進行", "desc": "手札の数字が全部1になる" }, "sch_change": { "name": "スケジュール変更手帳", "icon": "📒", "price": 500, "cat": "進行", "desc": "手札をすべて入れ替える" }, "positive": { "name": "ポジティブシンキング", "icon": "🌈", "price": 500, "cat": "マス", "desc": "見えている一番近い悪いことマスを良いことマスに変える" }, "reverse": { "name": "逆転の発想のススメ", "icon": "🔄", "price": 300, "cat": "マス", "desc": "見えている悪いことマスと良いことマスをすべて入れ替える" }, "onigiri": { "name": "おにぎり", "icon": "🍙", "price": 600, "cat": "回復", "desc": "全員の体力+1段階" }, "bento": { "name": "まんぷく弁当", "icon": "🍱", "price": 1600, "cat": "回復", "desc": "全員の体力を最大まで回復" }, "praise": { "name": "お褒めの言葉", "icon": "👏", "price": 700, "cat": "調子", "desc": "1人の調子が1段階アップ", "target": "player" }, "jibun": { "name": "自分探しの本", "icon": "🔮", "price": 400, "cat": "性格", "desc": "1人の性格をランダムに変える", "target": "player" }, "wax": { "name": "床用ワックス", "icon": "🧴", "price": 400, "cat": "体育館", "desc": "体育館レベル+1（累計17個まで）" }, "repair": { "name": "修理キット", "icon": "🧰", "price": 1800, "cat": "体育館", "desc": "器材1つの耐久度を全回復", "target": "equip" }, "resume": { "name": "新入生の履歴書", "icon": "📄", "price": 2000, "cat": "スカウト", "desc": "今年のスカウト候補+2人（10/1のスカウトより前に使う）" }, "ticket": { "name": "器材のお楽しみ券", "icon": "🎟", "price": 1600, "cat": "体育館", "desc": "持っていない器材を1つもらえる（1,000Pの器材がそろっていれば2,000Pの器材が確定）" } }, "STAT_ITEMS": [["spike", "練習用ボール（攻撃）", "🏐", 1500], ["jump", "スパイクシューズ", "👟", 1500], ["receive", "サポーター", "🦵", 1200], ["serve", "サーブ用ボール", "🎾", 1200], ["toss", "トス用ボール", "🟡", 1200], ["block", "ブロック用パッド", "🧤", 1200], ["stamina", "スポーツドリンク", "🥤", 800], ["mental", "メンタル本", "📕", 800]] }, "lines": { "_説明": "性格ごとのセリフ。場面ごとに複数あるときはランダム。{name}=本人の苗字、{school}=学校の略称", "明るい": { "join": ["{school}でバレーできるの、すっごく楽しみです！"], "score": ["よっしゃー！", "ナイスー！", "いぇーい！"], "block": ["止めたー！", "壁だよっ！"], "ace": ["決まったー！", "サーブ最高！"], "timeout": ["まだまだいけるよ！", "笑っていこう！"], "win": ["みんなのおかげだよ！ありがとう！", "勝ったー！最高！"], "lose": ["悔しいけど、次は絶対勝とうね！"], "awake": ["なんか今日、体が軽い！"], "skill": ["できた！新しい技、できたよ！"], "retire": ["最高の3年間だった！後輩たち、頼んだよ！"], "grad": ["このチームでバレーできて、本当に幸せでした！"] }, "まじめ": { "join": ["一生懸命がんばります。よろしくお願いします"], "score": ["よし…！", "いい形でした"], "block": ["読み通りです"], "ace": ["狙い通りです"], "timeout": ["一本ずつ、落ち着いて取り返しましょう"], "win": ["練習の成果が出ました"], "lose": ["課題が見えました。明日からまた練習します"], "awake": ["積み重ねが、少し形になってきました"], "skill": ["ようやく身につきました"], "retire": ["後輩たちには、基本を大切にしてほしいです"], "grad": ["監督、3年間ご指導ありがとうございました"] }, "負けず嫌い": { "join": ["誰にも負けません。レギュラー取ります"], "score": ["どうだ！", "まだまだ！"], "block": ["打たせない！"], "ace": ["これが実力！"], "timeout": ["ここからひっくり返す！"], "win": ["当然の結果！次も勝つ！"], "lose": ["…悔しい。絶対にやり返す"], "awake": ["負けたくない気持ちが、力になった"], "skill": ["これで誰にも負けない！"], "retire": ["全国の舞台、後輩に託す。絶対行けよ！"], "grad": ["負けず嫌いでよかった。おかげで強くなれた"] }, "マイペース": { "join": ["のんびりがんばります〜"], "score": ["お〜、入った〜", "いい感じ〜"], "block": ["あ、止まった〜"], "ace": ["ラッキ〜"], "timeout": ["ゆっくり深呼吸しよ〜"], "win": ["勝っちゃった〜。おなかすいた〜"], "lose": ["まぁ、次があるよ〜"], "awake": ["なんか、コツつかんだかも〜"], "skill": ["あれ、できるようになってる〜"], "retire": ["楽しかったな〜。みんなありがと〜"], "grad": ["ここでの時間、ずっと忘れないと思う〜"] }, "内気": { "join": ["よ、よろしくお願いします…がんばります…"], "score": ["や、やった…！", "決まった…！"], "block": ["と、止められた…！"], "ace": ["は、入った…！"], "timeout": ["み、みんな…まだ大丈夫…！"], "win": ["勝てて…うれしいです…"], "lose": ["…つ、次はもっと役に立ちます"], "awake": ["少しだけ…自信がつきました"], "skill": ["わたしにも…できました…！"], "retire": ["このチームに入って…本当によかった…"], "grad": ["バレー部で、勇気をもらいました。ありがとうございました"] }, "お調子者": { "join": ["エース候補、参上〜！よろしくっ！"], "score": ["見た？今の見た？", "わたし天才〜！"], "block": ["ドシャット〜！"], "ace": ["サービスエース、いただきっ！"], "timeout": ["大丈夫、わたしがいるじゃん！"], "win": ["今日のヒーローはわたしってことで！"], "lose": ["ありゃ〜…次は本気出す！"], "awake": ["ついに本気モード、来ちゃった？"], "skill": ["新必殺技、完成〜！"], "retire": ["伝説はここまで！…いや、後輩が続けてくれるか！"], "grad": ["笑ってばっかりの3年間、最高だった！"] } }, "match": { "TACTICS": { "balance": { "name": "バランス", "desc": "特に偏りなし" }, "quick": { "name": "速攻重視", "desc": "ミドルの速攻が増え、ブロックを振る。ミスが少し増える" }, "ace": { "name": "エースに集める", "desc": "一番のアタッカーに託す。読まれてブロックが付きやすい" }, "serve": { "name": "サーブで攻める", "desc": "強気のサーブで崩す。サーブミスも増える" }, "defense": { "name": "守備重視", "desc": "拾ってつなぐ。ミスは減るが決定力は下がる" } }, "LINEUP_MODES": { "best": { "name": "ベストメンバー", "desc": "試合用。能力が一番高い7人" }, "auto": { "name": "おまかせ", "desc": "試合と育成の中間。1年生を最低1人は起用" }, "youth": { "name": "1・2年優先", "desc": "育成用。3年生は控えに回しやすい" } } }, "modifiers": { "_説明": "試合中の補正の定義。stat は能力（spike/jump/block/receive/serve/toss/stamina/mental）か all。v は倍率の上乗せ（0.03 = +3%）。when は発動条件（src/core/modifiers.ts の WHEN を参照）", "captain": { "OH": { "name": "エースの意地", "desc": "終盤の接戦・セットを先行されているとき、チームのスパイク+4%", "mods": [{ "stat": "spike", "v": 0.04, "when": "clutchOrBehind" }] }, "MB": { "name": "壁の統率", "desc": "チームのブロック+4%", "mods": [{ "stat": "block", "v": 0.04, "when": "always" }] }, "OP": { "name": "点取り屋", "desc": "どちらかが20点以降、チームのスパイク+4%", "mods": [{ "stat": "spike", "v": 0.04, "when": "late20" }] }, "S": { "name": "司令塔", "desc": "チームのトス+4%", "mods": [{ "stat": "toss", "v": 0.04, "when": "always" }] }, "L": { "name": "守りの要", "desc": "チームのレシーブ+4%（連続失点中は+8%）", "mods": [{ "stat": "receive", "v": 0.04, "when": "notOppRun2" }, { "stat": "receive", "v": 0.08, "when": "oppRun2" }] } }, "captainSeniorMult": 1.5, "instructions": { "calm": { "name": "落ち着いていこう", "stat": "mental", "v": 0.10, "desc": "メンタル+10%・ミス-20%" }, "serve": { "name": "サーブで崩せ", "stat": "serve", "v": 0.12, "desc": "サーブ+12%・エース率アップ（サーブミス少し増）" }, "block": { "name": "ブロック、しっかり締めて", "stat": "block", "v": 0.08, "desc": "ブロック+8%（後ろのディグは少し手薄に）" }, "dig": { "name": "まず1本拾おう", "stat": "receive", "v": 0.08, "desc": "レシーブ+8%" }, "ace": { "name": "エースに集めろ", "stat": null, "v": 0.12, "desc": "エースに集中・威力+12%（ブロックが付きやすい）" }, "quick": { "name": "速攻を使え", "stat": null, "v": 0.08, "desc": "速攻が増え決定率+8%（乱れたトスでミス増）" } }, "instructionLength": 5, "counter": { "ace": "block", "quick": "block", "serve": "dig", "defense": "ace", "balance": "calm" }, "team": { "timeout": { "name": "タイムアウトで立て直し", "stat": "all", "v": 0.06 }, "run": { "name": "連続得点の勢い", "stat": "all", "v": 0.03, "when": "ownRun3" }, "mood": { "name": "チームの雰囲気（キャプテン・ムードメーカー）", "stat": "all" } }, "player": [{ "skill": "clutch", "stat": "all", "v": [0.015, 0.03], "when": "clutch" }, { "skill": "honban", "stat": "all", "v": [0.015, 0.03], "when": "big" }, { "skill": "gyakkyo", "stat": "all", "v": [0.015, 0.03], "when": "behind" }, { "red": "nomi", "stat": "all", "v": -0.07, "when": "clutch" }, { "red": "nomi", "stat": "all", "v": -0.05, "when": "bigNotClutch" }, { "red": "slow", "stat": "all", "v": -0.06, "when": "set1" }, { "skill": "jumpup", "stat": "jump", "v": [0.03, 0.06], "when": "always" }, { "skill": "dash", "stat": "all", "v": [0.015, 0.03], "when": "set1early" }, { "skill": "fullset", "stat": "all", "v": [0.015, 0.03], "when": "finalSet" }, { "skill": "kakue", "stat": "all", "v": [0.03, 0.06], "when": "underdog" }] }, "names": { "LAST_NAMES": ["佐藤", "鈴木", "高橋", "田中", "伊藤", "渡辺", "山本", "中村", "小林", "加藤", "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "林", "斎藤", "清水", "山崎", "森", "池田", "橋本", "阿部", "石川", "山下", "中島", "石井", "小川", "前田", "岡田", "長谷川", "藤田", "後藤", "近藤", "村上", "遠藤", "青木", "坂本", "斉藤", "福田", "太田", "西村", "藤井", "金子", "岡本", "藤原", "中野", "三浦", "原田", "中川", "松田", "竹内", "小野", "田村", "中山", "和田", "石田", "森田", "上田", "原", "内田", "柴田", "酒井", "宮崎", "横山", "高木", "安藤", "宮本", "大野", "小島", "谷口", "工藤", "高田", "丸山", "今井", "河野", "藤本", "村田", "武田", "上野", "杉山", "増田", "平野", "大塚", "千葉", "久保", "松井", "小山", "岩崎", "桜井", "野口", "松尾", "菅原", "木下", "野村", "菊地", "佐野", "大西"], "FIRST_NAMES": ["陽菜", "結衣", "美咲", "葵", "さくら", "凛", "莉子", "芽依", "優奈", "愛莉", "彩花", "花音", "心春", "結菜", "美羽", "七海", "真央", "ひなた", "楓", "杏", "柚希", "琴音", "日向", "紗希", "遥", "美月", "沙耶", "千尋", "詩織", "萌", "彩乃", "朱里", "茜", "菜々子", "瑞希", "真由", "奈緒", "舞", "由衣", "紬", "藍", "澪", "莉央", "心愛", "咲良", "乃愛", "未来", "夏美", "千夏", "友梨", "早紀", "亜美", "恵", "麻衣", "梨花", "絵里", "みなみ", "春香", "明日香", "若菜", "美優", "優花", "芹奈", "来実", "一華", "陽葵", "実花", "光", "鈴", "穂乃果", "環", "小春", "彩", "希", "梓", "雫", "晴香", "日菜子", "佳奈", "莉緒", "桃子", "真琴", "渚", "瞳", "綾", "香澄", "帆夏", "茉央", "伊織", "朋美", "沙織", "美桜", "心", "華", "汐里", "明里", "美来", "灯", "梢", "文香"], "MALE_NAMES": ["翔太", "大輝", "蓮", "悠斗", "陸", "颯太", "湊", "健太"], "SCHOOL_PREFIX": ["青葉", "桜ヶ丘", "星陵", "光明", "東雲", "白鷺", "若葉", "北条", "南陽", "西山", "朝日", "緑ヶ丘", "清風", "明星", "翔陽", "鳳凰", "大和", "飛鳥", "高嶺", "紫苑", "常盤", "葛城", "春日", "月島", "霞ヶ浦", "湊", "千里", "藤ヶ谷", "双葉", "銀河", "白百合", "聖蘭", "聖マリア", "黎明", "蒼穹", "旭", "日進", "栄光", "創成", "泉", "柏木", "松陰", "竹園", "梅里", "楓", "椿", "渚", "岬", "峰", "瑞穂", "長浜", "宮下", "北陵", "南稜", "東邦", "西都", "中央", "城南", "城北", "臨海"], "SCHOOL_SUFFIX": [{ "name": "高校", "tier": "normal" }, { "name": "県立高校", "tier": "weak" }, { "name": "商業高校", "tier": "normal" }, { "name": "工業高校", "tier": "weak" }, { "name": "女子高校", "tier": "normal" }, { "name": "学園", "tier": "strong" }, { "name": "学院", "tier": "strong" }, { "name": "女学院", "tier": "strong" }, { "name": "大学附属", "tier": "elite" }, { "name": "国際高校", "tier": "normal" }, { "name": "第一高校", "tier": "normal" }, { "name": "総合高校", "tier": "weak" }], "TEAM_NICKNAMES": ["Wings", "Falcons", "Phoenix", "Swallows", "Blossoms", "Stars", "Waves", "Breeze", "Comets", "Tigers", "Lynx", "Spikers", "Flames", "Aurora", "Rainbows", "Suns", "Angels", "Queens", "Hawks", "Doves"], "MY_SCHOOL_CANDIDATES": [["県立青葉台高校", "Aoba Leaves"], ["県立みなと坂高校", "Minato Waves"], ["県立桜ヶ丘高校", "Sakura Blossoms"], ["県立北条高校", "Hojo Falcons"], ["県立若葉高校", "Wakaba Sprouts"], ["県立白鷺高校", "Shirasagi Wings"], ["県立朝日野高校", "Asahino Suns"], ["県立風見高校", "Kazami Breeze"]], "PREFECTURES": ["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島", "茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川", "新潟", "富山", "石川", "福井", "山梨", "長野", "岐阜", "静岡", "愛知", "三重", "滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山", "鳥取", "島根", "岡山", "広島", "山口", "徳島", "香川", "愛媛", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"] }, "people": { "JOBS": { "vleague": { "name": "実業団（Vリーグ）入り", "icon": "🏐", "desc": "赤特を消す／数日間を練習ボーナスに／調子アップ／愚痴で調子ダウン", "short": "Vリーガー" }, "teacher": { "name": "体育の先生", "icon": "🧑‍🏫", "stats": ["spike", "serve"], "desc": "スパイク・サーブの経験値（まれに能力+5）", "short": "体育教師" }, "gym": { "name": "ジムトレーナー", "icon": "🏋️", "stats": ["jump", "stamina"], "desc": "ジャンプ・スタミナの経験値（まれに能力+5）", "short": "トレーナー" }, "shakai": { "name": "社会人チームの選手", "icon": "🏅", "stats": ["block", "receive"], "desc": "ブロック・レシーブの経験値（まれに能力+5）", "short": "社会人選手" }, "cafe": { "name": "カフェ店長", "icon": "☕", "stats": ["toss", "mental"], "desc": "トス・メンタルの経験値（まれに能力+5）", "short": "カフェ店長" }, "book": { "name": "書店員", "icon": "📚", "desc": "特殊能力の本をもらえる", "short": "書店員" }, "sports": { "name": "スポーツ用品店員", "icon": "🛠", "desc": "器材の耐久度を回復、または器材のお楽しみ券", "short": "用品店員" }, "shoes": { "name": "シューズ職人", "icon": "👟", "desc": "能力を上げる道具をもらえる", "short": "シューズ職人" }, "zakka": { "name": "雑貨店員", "icon": "🛍", "desc": "進行用アイテムをもらえる", "short": "雑貨店員" }, "uranai": { "name": "占い師", "icon": "🔮", "desc": "見えている悪いことマスを良いことマスに、または1人の性格を変える", "short": "占い師" }, "tabi": { "name": "ならず者", "icon": "😎", "desc": "手札をすべて入れ替える／手札の数字を振り直す／見えているマスをかき回す（どれになるかは運しだい）", "short": "ならず者" }, "jhcoach": { "name": "中学バレー部コーチ", "icon": "📋", "desc": "新入生の履歴書をもらえる", "short": "中学コーチ" }, "idol": { "name": "アイドル", "icon": "🎤", "mgr": true, "desc": "練習効率アップ（全員「中」／3人「大」）か調子アップ", "short": "アイドル" }, "nurse": { "name": "看護師", "icon": "🩺", "mgr": true, "desc": "全員の体力が回復", "short": "看護師" } }, "PLAYER_JOBS": ["teacher", "gym", "shakai", "cafe", "book", "sports", "shoes", "zakka", "uranai", "tabi", "jhcoach"], "MGR_HOLD": { "redpen": { "name": "赤ペン＋バインダー", "desc": "1学年の練習効率「中」アップ" }, "whistle": { "name": "笛＋バインダー", "desc": "体育館レベル+1（ワックス）または器材の耐久度回復" }, "binder": { "name": "バインダー", "desc": "床用ワックスを2個もらえる" }, "secret": { "name": "マル秘ノート", "desc": "本か進行用アイテムを2個もらえる" }, "none": { "name": "持ち物なし", "desc": "全員の体力+2段階" }, "analysis": { "name": "分析ノート（男子）", "desc": "次の公式戦を偵察済みにし、1〜3人の調子アップ" } } }, "profile": { "_説明": "選手のプロフィール。IDから毎回同じ内容が作られる", "HOBBIES": ["カフェめぐり", "読書", "ゲーム", "料理", "お菓子作り", "映画鑑賞", "アニメ鑑賞", "カラオケ", "ピアノ", "ギター", "写真", "イラスト", "ダンス", "ランニング", "釣り", "キャンプ", "昼寝", "手芸", "アイドルの推し活", "動画編集", "古着屋めぐり", "筋トレ", "プラモデル", "猫カフェ", "パズル", "園芸", "落語を聞くこと", "温泉めぐり", "バドミントン", "将棋"], "FOODS": ["から揚げ", "オムライス", "ラーメン", "カレー", "お寿司", "焼肉", "ハンバーグ", "グラタン", "餃子", "パンケーキ", "いちご大福", "たこ焼き", "肉じゃが", "チョコミント", "メロンパン", "焼き芋", "牛丼", "ピザ", "プリン", "うどん", "おにぎり（梅）", "チーズケーキ", "からあげクン", "親子丼", "鯛焼き"], "SUBJECTS": ["国語", "数学", "英語", "理科", "社会", "音楽", "美術", "体育", "家庭科", "情報"], "KUCHIGUSE": { "明るい": ["いっくよー！", "なんとかなるって！", "楽しんでこー！", "ドンマイドンマイ！"], "まじめ": ["基本が大事です", "一本ずつ、丁寧に", "反省して次に活かします", "よろしくお願いします"], "負けず嫌い": ["次は負けない", "まだまだ！", "もう一本！", "絶対取る"], "マイペース": ["まぁ、いっか", "ゆっくりいこ〜", "ふわぁ…", "なんとかなるよ〜"], "内気": ["が、がんばります…", "えっと…その…", "わ、わたしで良ければ…", "…はい"], "お調子者": ["任せといて〜！", "見た？今の見た？", "わたし天才かも！", "ノってきた〜！"] } }, "skills": { "SKILLS": [{ "id": "kyoda", "name": "強打", "gid": "gowan", "gname": "豪腕", "cat": "atk", "pos": null, "stats": ["spike"], "desc": "スパイク決定率 +1.5% / +3%" }, { "id": "uchiwake", "name": "打ち分け", "gid": "course", "gname": "コースの魔術師", "cat": "atk", "pos": null, "stats": ["spike", "mental"], "desc": "ブロックにかかりにくい（-3% / -6%）" }, { "id": "blockout", "name": "ブロックアウト", "gid": "rebound", "gname": "リバウンド職人", "cat": "atk", "pos": null, "stats": ["spike"], "desc": "ブロックされても15% / 30%で得点に変える" }, { "id": "sokko", "name": "速攻", "gid": "shinsoku", "gname": "神速", "cat": "atk", "pos": ["MB"], "stats": ["jump", "spike"], "desc": "速攻の決定率 +1.5% / +3%" }, { "id": "jisa", "name": "時間差", "gid": "trick", "gname": "トリックスター", "cat": "atk", "pos": ["MB", "OH"], "stats": ["spike"], "desc": "15% / 30%で相手ブロックを1枚減らす" }, { "id": "back", "name": "バックアタック", "gid": "pipe", "gname": "パイプ", "cat": "atk", "pos": ["OH", "OP"], "stats": ["spike", "jump"], "desc": "後衛から攻撃に参加しやすく、威力低下も小さい" }, { "id": "feint", "name": "フェイント上手", "gid": "kankyu", "gname": "緩急自在", "cat": "atk", "pos": null, "stats": ["spike", "mental"], "desc": "拾われても相手の返球が乱れる" }, { "id": "nidan", "name": "二段トス打ち", "gid": "ikiji", "gname": "エースの意地", "cat": "atk", "pos": ["OH", "OP"], "stats": ["spike", "mental"], "desc": "乱れたトスでも決定率が下がりにくい" }, { "id": "jumpServe", "name": "ジャンプサーブ", "gid": "dangan", "gname": "弾丸サーブ", "cat": "srv", "pos": null, "stats": ["serve", "jump"], "desc": "サービスエース +1% / +2%（ミスも少し増える）" }, { "id": "floater", "name": "ジャンプフローター", "gid": "makyu", "gname": "魔球", "cat": "srv", "pos": null, "stats": ["serve"], "desc": "相手のサーブカットを乱す" }, { "id": "nerai", "name": "狙い撃ち", "gid": "sniper", "gname": "スナイパー", "cat": "srv", "pos": null, "stats": ["serve", "mental"], "desc": "30% / 60%でレシーブが一番苦手な選手を狙う" }, { "id": "serveStable", "name": "サーブ安定", "gid": "seimitsu", "gname": "精密機械", "cat": "srv", "pos": null, "stats": ["serve"], "desc": "サーブミス -40% / -70%" }, { "id": "renzoku", "name": "連続サーブ", "gid": "ryosan", "gname": "サービスエース量産", "cat": "srv", "pos": null, "stats": ["serve", "mental"], "desc": "連続得点中はサーブの威力アップ" }, { "id": "yomi", "name": "読み", "gid": "guess", "gname": "ゲスブロック", "cat": "blk", "pos": null, "stats": ["block", "mental"], "desc": "シャットアウト率 +1% / +2%" }, { "id": "touch", "name": "ワンタッチ", "gid": "kabe", "gname": "壁", "cat": "blk", "pos": null, "stats": ["block"], "desc": "ワンタッチを取りやすく、相手の決定率を下げる" }, { "id": "kill", "name": "キルブロック", "gid": "teppeki", "gname": "鉄壁", "cat": "blk", "pos": ["MB", "OP"], "stats": ["block", "jump"], "desc": "シャットアウト率 +1% / +2%" }, { "id": "yoko", "name": "横移動", "gid": "commit", "gname": "コミットいらず", "cat": "blk", "pos": ["MB"], "stats": ["block", "stamina"], "desc": "速攻にも2枚ブロックで付く（25% / 50%）" }, { "id": "cut", "name": "サーブカット", "gid": "apass", "gname": "Aパス製造機", "cat": "def", "pos": null, "stats": ["receive"], "desc": "サーブレシーブの質が上がる" }, { "id": "hiroi", "name": "拾い屋", "gid": "shugoshin", "gname": "守護神", "cat": "def", "pos": null, "stats": ["receive"], "desc": "相手スパイクの決定率 -1% / -2%" }, { "id": "flying", "name": "フライングレシーブ", "gid": "shunen", "gname": "執念", "cat": "def", "pos": null, "stats": ["receive", "stamina"], "desc": "決められたボールを6% / 12%で拾い上げる" }, { "id": "hani", "name": "守備範囲", "gid": "shihai", "gname": "コートの支配者", "cat": "def", "pos": ["L"], "stats": ["receive"], "desc": "コート全体のディグ力アップ" }, { "id": "tsunagi", "name": "つなぎ", "gid": "under", "gname": "アンダーセッター", "cat": "def", "pos": ["L", "OH"], "stats": ["receive", "toss"], "desc": "乱れたボールを30% / 60%で立て直す" }, { "id": "tossStable", "name": "トス安定", "gid": "pinpoint", "gname": "ピンポイント", "cat": "tos", "pos": ["S"], "stats": ["toss"], "desc": "パスが乱れてもトス精度が落ちにくい" }, { "id": "haikyu", "name": "配球眼", "gid": "shireito", "gname": "司令塔", "cat": "tos", "pos": ["S"], "stats": ["toss", "mental"], "desc": "相手ブロックを減らし、捕まりにくくする" }, { "id": "tempo", "name": "速いトス", "gid": "tempoK", "gname": "テンポの支配者", "cat": "tos", "pos": ["S"], "stats": ["toss"], "desc": "速攻・平行の決定率アップ" }, { "id": "two", "name": "ツー攻撃", "gid": "kishu", "gname": "奇襲", "cat": "tos", "pos": ["S"], "stats": ["toss", "spike"], "desc": "前衛のとき、2本目を直接攻撃する" }, { "id": "jumpToss", "name": "ジャンプトス", "gid": "takai", "gname": "高い打点のトス", "cat": "tos", "pos": ["S"], "stats": ["toss", "jump"], "desc": "トスが速くなり、ブロックが遅れる" }, { "id": "tairyoku", "name": "体力自慢", "gid": "tetsujin", "gname": "鉄人", "cat": "body", "pos": null, "stats": ["stamina"], "desc": "試合中の体力消耗 -25% / -50%" }, { "id": "ganjo", "name": "頑丈", "gid": "fujimi", "gname": "不死身", "cat": "body", "pos": null, "stats": ["stamina"], "desc": "ケガの確率 -40% / -70%" }, { "id": "kaifuku", "name": "回復上手", "gid": "chokaifuku", "gname": "超回復", "cat": "body", "pos": null, "stats": ["stamina"], "desc": "毎日の体力回復が早い" }, { "id": "honban", "name": "本番に強い", "gid": "biggame", "gname": "ビッグゲーム", "cat": "body", "pos": null, "stats": ["mental"], "desc": "準決勝以上・全国大会で能力 +1.5% / +3%" }, { "id": "clutch", "name": "接戦◎", "gid": "deuce", "gname": "デュースの女王", "cat": "body", "pos": null, "stats": ["mental"], "desc": "終盤の接戦で能力 +1.5% / +3%" }, { "id": "gyakkyo", "name": "逆境◎", "gid": "fukutsu", "gname": "不屈", "cat": "body", "pos": null, "stats": ["mental"], "desc": "セットを先行されているとき能力 +1.5% / +3%" }, { "id": "seicho", "name": "成長促進", "gid": "tensai", "gname": "天才肌", "cat": "body", "pos": null, "stats": ["all"], "awaken": true, "desc": "練習で得る経験値 +15% / +30%（覚醒イベントのみ）" }, { "id": "mood", "name": "ムードメーカー", "gid": "taiyo", "gname": "太陽", "cat": "team", "pos": null, "stats": ["mental"], "cond": { "pers": "明るい" }, "desc": "出場中、チーム全員の能力 +1% / +2%（条件：性格「明るい」）" }, { "id": "koe", "name": "声出し", "gid": "captain", "gname": "キャプテンシー", "cat": "team", "pos": null, "stats": ["mental"], "cond": { "minGrade": 3 }, "desc": "タイムアウトの効果が長く続く（条件：3年生）" }, { "id": "oni", "name": "練習の鬼", "gid": "senaka", "gname": "背中で語る", "cat": "team", "pos": null, "stats": ["all"], "desc": "同じポジションの後輩の経験値 +10% / +20%" }, { "id": "kirikae", "name": "切り替え上手", "gid": "nagare", "gname": "流れを変える", "cat": "team", "pos": null, "stats": ["mental"], "desc": "3連続失点のあと、チームを立て直す" }, { "id": "jumpup", "name": "ジャンプ力◎", "gid": "bane", "gname": "驚異的なバネ", "cat": "atk", "pos": ["OH", "MB", "OP", "S"], "stats": ["jump"], "desc": "ジャンプ実効値 +3% / +6%" }, { "id": "genkai", "name": "限界の片鱗", "gid": "toppa", "gname": "限界突破", "cat": "body", "pos": null, "stats": ["all"], "desc": "試合中のみ、最も高い能力値に固定値 +3 / +5（実効値が100を超えることがある）" }, { "id": "seikaku", "name": "正確無比", "gid": "kanzen", "gname": "完全無欠", "cat": "atk", "pos": null, "stats": ["spike", "mental"], "desc": "スパイクミス率 -15% / -30%" }, { "id": "digsei", "name": "ディグの精度", "gid": "digpro", "gname": "精密ディグ", "cat": "def", "pos": ["L", "OH"], "stats": ["receive"], "desc": "ディグの質 +8 / +16" }, { "id": "otori", "name": "囮", "gid": "meijin", "gname": "囮の達人", "cat": "tos", "pos": ["S"], "stats": ["toss", "mental"], "desc": "出場中、味方アタッカーのスパイク決定率 +1% / +2%" }, { "id": "dash", "name": "スタートダッシュ", "gid": "denko", "gname": "電光石火", "cat": "body", "pos": null, "stats": ["all"], "desc": "第1セット序盤（両チーム合計8点まで）全能力 +1.5% / +3%" }, { "id": "fullset", "name": "フルセット◎", "gid": "fqueen", "gname": "最終セットの女王", "cat": "body", "pos": null, "stats": ["all"], "desc": "最終セットで全能力 +1.5% / +3%" }, { "id": "acefu", "name": "エース封じ", "gid": "akiller", "gname": "エースキラー", "cat": "blk", "pos": ["MB"], "stats": ["block", "mental"], "desc": "相手の最多得点者のスパイク決定率 -2% / -4%" }, { "id": "kakue", "name": "格上◎", "gid": "gekokujo", "gname": "下克上", "cat": "body", "pos": null, "stats": ["all"], "desc": "格上相手の試合で全能力 +3% / +6%" }], "RED_SKILLS": [{ "id": "nomi", "name": "ノミの心臓", "desc": "接戦や大舞台で能力ダウン", "fix": "メンタル60以上で克服" }, { "id": "kegaYasui", "name": "ケガしやすい", "desc": "ケガの確率が上がる", "fix": "筋トレマスで克服することがある" }, { "id": "serveBad", "name": "サーブ不安定", "desc": "サーブミスが増える", "fix": "サーブ60以上で克服" }, { "id": "slow", "name": "スロースターター", "desc": "第1セットで能力ダウン", "fix": "公式戦・練習試合に10試合出場で克服" }, { "id": "tanchou", "name": "単調", "desc": "スパイクのコースが読まれ、ブロックされやすい", "fix": "スパイク60以上で克服" }, { "id": "tsukare", "name": "疲れやすい", "desc": "試合中の体力消耗が大きい", "fix": "スタミナ60以上で克服" }, { "id": "kajou", "name": "自信過剰", "desc": "調子の振れ幅が大きい", "fix": "イベントで克服" }, { "id": "mura", "name": "ムラっ気", "desc": "試合ごとに能力が上下する", "fix": "メンタル70以上で克服" }], "CAT_JP": { "atk": "攻撃", "srv": "サーブ", "blk": "ブロック", "def": "守備", "tos": "トス", "body": "身体・精神", "team": "チーム" } }, "titles": { "_説明": "二つ名のルール。上から順に判定し、最初に当てはまったものが付く（すでに持っている二つ名より順位が上なら付け替え）。{school}=学校の略称。type: gold=金特の分類、stat=能力の値、rec=公式戦の通算記録、sum=全能力の合計", "TITLE_RULES": [{ "type": "rec", "key": "pts", "min": 150, "name": "{school}の得点女王" }, { "type": "gold", "count": 3, "name": "{school}の怪物" }, { "type": "sum", "min": 640, "name": "{school}の完璧超人" }, { "type": "rec", "key": "blk", "min": 40, "name": "ブロック女王" }, { "type": "rec", "key": "ace", "min": 25, "name": "サービスエース女王" }, { "type": "gold", "cat": "atk", "name": "{school}の大砲" }, { "type": "gold", "cat": "blk", "name": "{school}の鉄壁" }, { "type": "gold", "cat": "def", "name": "{school}の守護神" }, { "type": "gold", "cat": "srv", "name": "{school}のサーブの鬼" }, { "type": "gold", "cat": "tos", "name": "{school}の司令塔" }, { "type": "gold", "cat": "body", "name": "{school}の鉄人" }, { "type": "gold", "cat": "team", "name": "{school}の太陽" }, { "type": "stat", "stat": "spike", "min": 85, "name": "{school}のエース" }, { "type": "stat", "stat": "block", "min": 85, "name": "{school}の壁" }, { "type": "stat", "stat": "receive", "min": 85, "name": "拾いの名手" }, { "type": "stat", "stat": "serve", "min": 85, "name": "サーブの名手" }, { "type": "stat", "stat": "toss", "min": 85, "name": "魔法のトス" }, { "type": "stat", "stat": "jump", "min": 85, "name": "跳躍姫" }, { "type": "stat", "stat": "stamina", "min": 85, "name": "無尽蔵のスタミナ" }, { "type": "stat", "stat": "mental", "min": 85, "name": "鋼のハート" }, { "type": "rec", "key": "pts", "min": 60, "name": "ポイントゲッター" }, { "type": "rec", "key": "g", "min": 30, "name": "不動のレギュラー" }] }, "training": { "CARD_KINDS": { "spike": { "name": "スパイク練", "icon": "💥", "exp": { "spike": 40, "jump": 10 } }, "block": { "name": "ブロック練", "icon": "🧱", "exp": { "block": 40, "jump": 10 } }, "receive": { "name": "レシーブ練", "icon": "🛡️", "exp": { "receive": 40, "stamina": 7 } }, "serve": { "name": "サーブ練", "icon": "🎯", "exp": { "serve": 40, "mental": 7 } }, "toss": { "name": "トス練", "icon": "🙌", "exp": { "toss": 40, "receive": 7 } }, "train": { "name": "筋トレ", "icon": "💪", "exp": { "jump": 27, "stamina": 27, "spike": 7 } }, "mental": { "name": "ミーティング", "icon": "🧠", "exp": { "mental": 40 } }, "all": { "name": "総合練習", "icon": "🏐", "exp": { "spike": 8, "jump": 8, "block": 8, "receive": 8, "serve": 8, "toss": 8, "stamina": 8, "mental": 8 } }, "rest": { "name": "休養", "icon": "🛌", "exp": {} } }, "CARD_W": { "spike": 14, "receive": 14, "block": 10, "serve": 10, "toss": 8, "train": 14, "mental": 7, "all": 12, "rest": 11 }, "CARD_MODS": { "normal": { "name": "", "exp": 1, "fat": 1, "desc": "" }, "focus": { "name": "集中", "exp": 1.5, "fat": 1.5, "desc": "経験値×1.5・疲れ×1.5" }, "light": { "name": "軽め", "exp": 0.7, "fat": 0.5, "desc": "経験値×0.7・疲れ×0.5" }, "self": { "name": "自主練", "exp": 1, "fat": 1, "desc": "個別メニュー×2" }, "ob": { "name": "OB指導", "exp": 2, "fat": 1.2, "desc": "OBコーチの指導 経験値×2" } }, "ACTION_KINDS": { "watch": { "name": "観戦", "icon": "📺", "desc": "強豪の試合を観戦（1日）。次の練習カード1回分、練習効率「小」アップ" }, "meal": { "name": "食事会", "icon": "🍱", "desc": "食事会（1日）。全員の体力が1段階回復し、調子が上がりやすい。2人の絆も深まる" }, "lesson": { "name": "個別指導", "icon": "👩‍🏫", "desc": "個別指導（1日）。1人を選んで、指定した能力をみっちり指導" }, "pmatch": { "name": "練習試合", "icon": "🏐", "desc": "相手を選んで練習試合（1日）。前評判を見てオーダーを組み、大会と同じく指示できる" }, "recon": { "name": "偵察", "icon": "🔭", "desc": "偵察（1日）。次の公式戦の相手を偵察。大会当日、相手の特殊能力が見え、チーム能力+2%" }, "scout": { "name": "スカウト", "icon": "🔍", "desc": "スカウト（1日）。中学校を回って視察ポイント+3（10/1〜2/28）" }, "career": { "name": "進路相談", "icon": "🗣", "desc": "進路相談（1日）。3年生1人の卒業後の進路を誘導する（9月〜2月）" } }, "ACTION_W": { "watch": 7, "meal": 7, "lesson": 6, "pmatch": 6, "recon": 5, "scout": 7, "career": 4 }, "POLICIES": { "balance": { "name": "バランス", "desc": "偏りなし" }, "attack": { "name": "攻撃重視", "desc": "スパイク練・サーブ練が出やすい" }, "defense": { "name": "守備重視", "desc": "レシーブ練・ブロック練が出やすい" }, "body": { "name": "体づくり", "desc": "筋トレ・休養が出やすい" }, "setter": { "name": "司令塔育成", "desc": "トス練・ミーティングが出やすい" }, "jissen": { "name": "実戦重視", "desc": "行動カード（特に練習試合・観戦）が出やすい" } }, "POLICY_MULT": { "attack": { "spike": 1.7, "serve": 1.7 }, "defense": { "receive": 1.7, "block": 1.7 }, "body": { "train": 1.7, "rest": 1.5 }, "setter": { "toss": 1.8, "mental": 1.8 }, "jissen": { "pmatch": 2, "watch": 1.6 } }, "TILE_TYPES": { "normal": { "name": "普通", "icon": "・", "desc": "何も起きない（隠しマスの日は何かが起きることも）" }, "good": { "name": "良いこと", "icon": "😊", "desc": "差し入れ・寄付・覚醒・取材・練習効率アップなど" }, "bad": { "name": "悪いこと", "icon": "😣", "desc": "ケガ・ケンカ・不調・出費など（70%で発生）" }, "power": { "name": "練習ボーナス", "icon": "🔥", "desc": "ここに着地すると、このカードの練習経験値が全日程1.3倍" }, "tokkun": { "name": "特訓", "icon": "⚡", "desc": "候補3人から1人を選び、特殊能力の習得・昇格に挑戦" }, "rest": { "name": "回復", "icon": "💤", "desc": "全員の体力が2段階回復し、調子が上がる" }, "branch": { "name": "分岐", "icon": "⭐", "desc": "この先の道を3つから選べる" }, "person": { "name": "人物", "icon": "🧑", "desc": "卒業生（5年以内）が訪ねてくる。進路によって効果が違う" }, "equip": { "name": "備品", "icon": "📦", "desc": "施設（戦績ポイント）の割引券がもらえる" } }, "TILE_W": { "normal": 26, "good": 15, "bad": 14, "power": 7, "tokkun": 3, "rest": 10, "branch": 6, "equip": 3, "person": 6 }, "ROUTE_STYLES": [{ "name": "練習の道", "w": { "power": 5, "normal": 2, "rest": 1, "good": 1, "bad": 1 } }, { "name": "出会いの道", "w": { "good": 3, "person": 3, "tokkun": 2, "normal": 2, "bad": 1 } }, { "name": "荒れた道", "w": { "bad": 3, "tokkun": 3, "power": 2, "good": 1, "normal": 1 } }, { "name": "のんびりの道", "w": { "rest": 4, "normal": 3, "good": 2, "bad": 1 } }], "CAMP_OPTS": [{ "id": "none", "name": "合宿しない", "cost": 0, "desc": "しっかり休む（体力回復）" }, { "id": "normal", "name": "通常合宿", "cost": 100, "desc": "全能力とポジションの主要能力に経験値（大）／体力1段階ダウン" }, { "id": "hard", "name": "強化合宿（強豪校と合同）", "cost": 250, "desc": "経験値（特大）＋県内最強校と練習試合／体力1.5段階ダウン／まれに特殊能力を習得" }], "FOCUS": { "spike": { "name": "スパイク", "desc": "スパイク練が出やすい" }, "block": { "name": "ブロック", "desc": "ブロック練が出やすい" }, "receive": { "name": "レシーブ", "desc": "レシーブ練が出やすい" }, "serve": { "name": "サーブ", "desc": "サーブ練が出やすい" }, "toss": { "name": "トス", "desc": "トス練が出やすい" }, "train": { "name": "体づくり", "desc": "筋トレが出やすい" }, "mental": { "name": "メンタル", "desc": "ミーティングが出やすい" }, "all": { "name": "総合力", "desc": "総合練習が出やすい" }, "jissen": { "name": "実戦", "desc": "行動カード（特に練習試合・観戦）が出やすい" } }, "FOCUS_MULT": [1, 2.4, 1.8], "FOCUS_MAX": 2, "_FOCUSの説明": "年度初めに選ぶ方針。FOCUS_MULT[選んだ数] がそのカードの出やすさの倍率。休養カードの出る確率は方針に関係なく一定", "FROM_POLICY": { "balance": [], "attack": ["spike", "serve"], "defense": ["receive", "block"], "body": ["train"], "setter": ["toss", "mental"], "jissen": ["jissen"] }, "FIXED_DAYS": { "rest": 1, "watch": 1, "pmatch": 1, "meal": 1, "lesson": 1, "recon": 1, "scout": 1, "career": 1 }, "_FIXED_DAYSの説明": "練習以外のカードは1日固定（スケジュール系アイテムでも変わらない）", "REST_RECOVER": 28, "_REST_RECOVERの説明": "休養カード1枚（1日）の体力回復量（20で1段階）" }, "world": { "REP_TABLE": [{ "min": 0, "name": "無名", "cap": 12, "budget": 300, "scout": 0, "lo": 15, "hi": 25 }, { "min": 20, "name": "県内中堅", "cap": 13, "budget": 500, "scout": 1, "lo": 20, "hi": 30 }, { "min": 40, "name": "県内強豪", "cap": 14, "budget": 800, "scout": 1, "lo": 25, "hi": 35 }, { "min": 60, "name": "全国区", "cap": 15, "budget": 1200, "scout": 2, "lo": 30, "hi": 40 }, { "min": 80, "name": "名門", "cap": 16, "budget": 1800, "scout": 3, "lo": 35, "hi": 45 }], "COLORS": [{ "id": "red", "name": "赤", "c": "#d8343a" }, { "id": "blue", "name": "青", "c": "#2f63d6" }, { "id": "green", "name": "緑", "c": "#2e9e4f" }, { "id": "yellow", "name": "黄", "c": "#d9a600" }, { "id": "purple", "name": "紫", "c": "#8a3fc7" }, { "id": "black", "name": "黒", "c": "#333333" }, { "id": "pink", "name": "ピンク", "c": "#e86a92" }, { "id": "orange", "name": "オレンジ", "c": "#e07020" }, { "id": "sky", "name": "水色", "c": "#35a3d8" }, { "id": "navy", "name": "紺", "c": "#22386b" }, { "id": "white", "name": "白", "c": "#e9e9e9" }, { "id": "maroon", "name": "エンジ", "c": "#93333f" }], "OPP_COLORS": ["#2f63d6", "#2e9e4f", "#8a3fc7", "#e07020", "#3a3a3a", "#1a9a9a", "#c03070", "#6a6a20"], "PERSONALITIES": ["明るい", "まじめ", "負けず嫌い", "マイペース", "内気", "お調子者"] } };
-const GAME_VERSION = '21';
+const GAME_VERSION = '22';
 const SAVE_KEY = 'vbcoach_save_v13';
 const SAVE_VERSION = 17;
 const STATS = ['spike', 'jump', 'block', 'receive', 'serve', 'toss', 'stamina', 'mental'];
@@ -1071,17 +1114,151 @@ function genRivals(s) {
         used.add(name);
         const rb = s.school.rep || 0;
         const str = Math.round((tier === 'strong' ? ri(54, 66) + Math.round(rb * 0.18) : tier === 'mid' ? ri(40, 55) + Math.round(rb * 0.1) : ri(25, 40)) * diffMult(s));
-        out.push({ id: uid('r'), name, short: pre.slice(0, 4), tier, str, nick: tier === 'strong' && R() < 0.3 ? pick(TEAM_NICKNAMES) : '', players: genRivalRoster(str, s), color: pick(OPP_COLORS) });
+        const arch = pickTeamArch();
+        out.push({ id: uid('r'), name, short: pre.slice(0, 4), tier, str, arch, nick: tier === 'strong' && R() < 0.3 ? pick(TEAM_NICKNAMES) : '', players: genRivalRoster(str, s, arch), color: pick(OPP_COLORS) });
     }
     return out;
 }
-function genRivalRoster(str, s) {
+/* ---------- v22：対戦相手のチームアーキタイプ（型） ----------
+   相手チームの生成時に型を1つ割り当て、能力配分と特能配分に色を付ける。
+   型は「再配分」で付ける（突出させる部分と引き換えに他を少し抑える）ため、
+   チーム総合力（str の水準・lineupPower）は型によらずほぼ変わらない。
+   試合への表れ方：aiTactic が型の作戦を優先し、攻撃対象の重み（スパイク実効値と
+   作戦倍率）を通じてエース占有率・速攻参加率などが変わる。 */
+const TEAM_ARCH = {
+    ace: { name: 'エース絶対型', desc: '絶対的エース1人にボールを集める、エース中心のチーム', tac: 'ace', cat: 'atk', hint: 'エースにボールが集まります。ブロックを寄せて、エースを止めにいきましょう' },
+    quick: { name: 'クイックコンビ型', desc: 'セッターの配球とミドルの速攻で相手を振る、コンビバレーのチーム', tac: 'quick', cat: 'tos', hint: '速攻が多めです。セッターの手元とミドルの動きから目を離さないこと' },
+    block: { name: 'ブロック堅守型', desc: '高さのあるブロックで相手の攻撃を跳ね返す、堅守のチーム', tac: 'balance', cat: 'blk', hint: '正面突破は分が悪い。打ち分けやフェイントでブロックを外しましょう' },
+    receive: { name: 'レシーブ粘り型', desc: '粘り強いレシーブで簡単にはボールを落とさない、守備のチーム', tac: 'defense', cat: 'def', hint: '簡単には決まりません。焦ってミスをしないよう、つなぐ意識でいきましょう' },
+    serve: { name: 'サーブ圧力型', desc: '強烈なサーブで相手のレシーブを崩しにくる、攻撃的サーブのチーム', tac: 'serve', cat: 'srv', hint: 'サーブで崩しに来ます。レシーブの隊形と声かけを厚くしましょう' },
+    balance: { name: 'バランス型', desc: '突出した型のない、バランスの取れたチーム', tac: null, cat: null, hint: '大きな穴はありません。自分たちのバレーを押し通しましょう' }
+};
+const TEAM_ARCH_IDS = Object.keys(TEAM_ARCH);
+function pickTeamArch(weights) {
+    if (weights) {
+        const ids = TEAM_ARCH_IDS.filter(id => (weights[id] || 0) > 0);
+        if (ids.length)
+            return wpick(ids, ids.map(id => weights[id]));
+    }
+    return wpick(TEAM_ARCH_IDS, [17, 17, 17, 17, 14, 18]);
+}
+const teamArchOf = team => (team && TEAM_ARCH[team.arch]) ? team.arch : 'balance';
+/* 型の主役になる選手（能力再配分・特能バイアス・アナリスト分析で共用）。
+   starters は先頭7人（S・OH・OH・MB・MB・OP・L の並び）を想定する。 */
+function archKeyPlayers(starters, arch) {
+    const st = (starters || []).filter(Boolean);
+    if (!st.length)
+        return [];
+    const byPos = pos => st.filter(p => p.pos === pos);
+    const best = (list, f) => list.length ? list.reduce((b, p) => (f(p) > f(b) ? p : b), list[0]) : null;
+    const atk = st.filter(p => p.pos === 'OH' || p.pos === 'OP');
+    const out = [];
+    const add = (p, role) => { if (p && !out.some(x => x.p === p)) out.push({ p, role }); };
+    if (arch === 'ace')
+        add(best(atk, p => p.stats.spike), 'エース');
+    else if (arch === 'quick') {
+        add(byPos('S')[0], '司令塔');
+        add(best(byPos('MB'), p => p.stats.spike), '速攻の軸');
+    }
+    else if (arch === 'block') {
+        add(best(byPos('MB'), p => p.stats.block), 'ブロックの要');
+        add(best(st.filter(p => p.pos !== 'L' && p.pos !== 'S'), p => p.stats.block), 'ブロックの軸');
+    }
+    else if (arch === 'receive') {
+        add(byPos('L')[0], '守護神');
+        add(best(byPos('OH'), p => p.stats.receive), 'レシーブの軸');
+    }
+    else if (arch === 'serve') {
+        const sv = [...st].sort((a, b) => b.stats.serve - a.stats.serve);
+        add(sv[0], 'サーブの軸');
+        add(sv[1], 'サーブの軸');
+    }
+    else {
+        add(best(st, p => overall(p)), '中心選手');
+        add(best(atk, p => p.stats.spike), 'エース格');
+    }
+    return out.slice(0, 3);
+}
+/* 型の能力再配分（スタメン7人のみ・総合力がほぼ変わらないよう突出と抑制を対にする） */
+function applyArchStats(roster, arch) {
+    const st = roster.slice(0, 7);
+    const byPos = pos => st.filter(p => p.pos === pos);
+    const add = (p, k, v) => { if (p) p.stats[k] = clamp(Math.round(p.stats[k] + v), 1, 95); };
+    if (arch === 'ace') {
+        const ace = archKeyPlayers(st, 'ace')[0]?.p;
+        add(ace, 'spike', 10); add(ace, 'jump', 3);
+        for (const p of st)
+            if ((p.pos === 'OH' || p.pos === 'OP') && p !== ace)
+                add(p, 'spike', -4);
+        for (const p of byPos('MB'))
+            add(p, 'spike', -2);
+    }
+    else if (arch === 'quick') {
+        const s0 = byPos('S')[0];
+        add(s0, 'toss', 6); add(s0, 'serve', 2);
+        for (const p of byPos('MB')) { add(p, 'spike', 5); add(p, 'jump', 2); }
+        for (const p of byPos('OH')) { add(p, 'spike', -3); add(p, 'receive', -1); }
+        add(byPos('OP')[0], 'spike', -4);
+    }
+    else if (arch === 'block') {
+        for (const p of byPos('MB')) { add(p, 'block', 7); add(p, 'spike', -2); if (p) p.height = Math.min(194, p.height + 2); }
+        add(byPos('OP')[0], 'block', 3);
+        for (const p of byPos('OH')) { add(p, 'block', 2); add(p, 'spike', -2); }
+        for (const p of st)
+            add(p, 'serve', -1);
+    }
+    else if (arch === 'receive') {
+        add(byPos('L')[0], 'receive', 7); add(byPos('L')[0], 'mental', -2);
+        for (const p of byPos('OH')) { add(p, 'receive', 4); add(p, 'spike', -3); }
+        add(byPos('S')[0], 'receive', 2);
+        add(byPos('OP')[0], 'spike', -3);
+        for (const p of byPos('MB'))
+            add(p, 'spike', -1);
+    }
+    else if (arch === 'serve') {
+        for (const p of st) {
+            add(p, 'serve', 6);
+            if (p.pos === 'OH' || p.pos === 'OP' || p.pos === 'MB')
+                add(p, 'spike', -2);
+            if (p.pos === 'OH' || p.pos === 'L')
+                add(p, 'receive', -1);
+        }
+    }
+}
+/* 型の特能バイアス：主役が型のカテゴリの特能を持っていなければ、別の青特と入れ替える
+   （個数は変えない＝skillScore は不変。上限に余裕があるときだけ追加する） */
+function applyArchSkills(roster, arch, ds) {
+    const A = TEAM_ARCH[arch];
+    if (!A || !A.cat)
+        return;
+    const cap = ds ? ds.cap : 5;
+    for (const { p } of archKeyPlayers(roster.slice(0, 7), arch)) {
+        if ((p.skills || []).some(id => skillInfo(id).cat === A.cat))
+            continue;
+        const cand = SKILLS.filter(d => d.cat === A.cat && !d.awaken && !d.cond && posOk(p, d) && !hasSk(p, d.id) && !hasSk(p, d.gid))
+            .sort((a, b) => relStat(p, b) - relStat(p, a))[0];
+        if (!cand || relStat(p, cand) < 50)
+            continue;
+        const swap = (p.skills || []).find(id => SKB[id] && skillInfo(id).cat !== A.cat);
+        if (swap) {
+            removeSkill(p, swap);
+            addSkill(p, cand.id);
+        }
+        else if ((p.skills || []).length < cap)
+            addSkill(p, cand.id);
+    }
+}
+function genRivalRoster(str, s, arch) {
     const ds = diffSkill(s);
     const roster = [];
     for (const pos of ['S', 'OH', 'OH', 'MB', 'MB', 'OP', 'L'])
         roster.push(rivalSkills(genPlayer({ pos, avg: str, spread: 8, grade: ri(1, 3), existing: roster }), ds));
     for (const pos of ['OH', 'MB', 'S'])
         roster.push(rivalSkills(genPlayer({ pos, avg: str - 8, spread: 8, grade: ri(1, 2), existing: roster }), ds));
+    if (arch && arch !== 'balance') {
+        applyArchStats(roster, arch);
+        applyArchSkills(roster, arch, ds);
+    }
     return roster;
 }
 function rivalBench(r) { return r.players.slice(7); }
@@ -2037,6 +2214,10 @@ function quickSim(pa, pb, bestOf) {
     return { w, score: w === 0 ? `${n}-${lose}` : `${lose}-${n}` };
 }
 function aiTactic(team) {
+    /* v22：チームアーキタイプの作戦を優先する（型が試合内容に表れるように） */
+    const at = team && TEAM_ARCH[teamArchOf(team)];
+    if (at && at.tac && R() < 0.65)
+        return at.tac;
     return wpick(['balance', 'quick', 'ace', 'serve', 'defense'], team && team.tier === 'strong' ? [3, 2, 2, 2, 1] : [4, 1, 2, 2, 2]);
 }
 function sideBench(s, lu, filter) {
@@ -2425,8 +2606,9 @@ function genNationalTeams(s, n) {
         used.add(name);
         const nb = Math.round((s.school.rep || 0) * 0.12);
         const str = Math.round(((tier === 'elite' ? ri(66, 76) : tier === 'strong' ? ri(58, 68) : ri(50, 60)) + nb) * diffMult(s));
-        out.push({ id: uid('n'), name, pref: prefs[out.length], short: pre.slice(0, 4), tier: tier === 'mid' ? 'mid' : 'strong', nat: tier, str,
-            nick: tier === 'elite' && R() < 0.5 ? pick(TEAM_NICKNAMES) : '', players: genRivalRoster(str, s), color: pick(OPP_COLORS) });
+        const arch = pickTeamArch();
+        out.push({ id: uid('n'), name, pref: prefs[out.length], short: pre.slice(0, 4), tier: tier === 'mid' ? 'mid' : 'strong', nat: tier, str, arch,
+            nick: tier === 'elite' && R() < 0.5 ? pick(TEAM_NICKNAMES) : '', players: genRivalRoster(str, s, arch), color: pick(OPP_COLORS) });
     }
     return out;
 }
@@ -2449,35 +2631,103 @@ function createNational(s, type) {
    強さの目安は自校のチーム力の +15〜25%（国内全国大会のエリート校より明確に上）。
    rivalPower は str に対して約 str+10 になるため、str = 自校チーム力×1.22／1.16 − 6 で換算する。 */
 const WORLD_COUNTRIES = [
-    { flag: '🇺🇸', name: 'アメリカ', short: 'USA', mods: { spike: 6, jump: 5 }, top: true },
-    { flag: '🇧🇷', name: 'ブラジル', short: 'BRA', mods: { receive: 6, mental: 5 }, top: true },
-    { flag: '🇨🇳', name: '中国', short: 'CHN', mods: { block: 6, jump: 5 }, top: true },
-    { flag: '🇮🇹', name: 'イタリア', short: 'ITA', mods: { serve: 6, spike: 4 }, top: true },
-    { flag: '🇷🇸', name: 'セルビア', short: 'SRB', mods: { spike: 5, block: 5 }, top: true },
-    { flag: '🇹🇷', name: 'トルコ', short: 'TUR', mods: { spike: 6, jump: 4 } },
-    { flag: '🇳🇱', name: 'オランダ', short: 'NED', mods: { block: 5, serve: 4 } },
-    { flag: '🇵🇱', name: 'ポーランド', short: 'POL', mods: { spike: 5, jump: 4 } },
-    { flag: '🇩🇪', name: 'ドイツ', short: 'GER', mods: { receive: 4, block: 4 } },
-    { flag: '🇰🇷', name: '韓国', short: 'KOR', mods: { receive: 5, serve: 4 } },
-    { flag: '🇹🇭', name: 'タイ', short: 'THA', mods: { receive: 6, toss: 4 } },
-    { flag: '🇩🇴', name: 'ドミニカ共和国', short: 'DOM', mods: { spike: 5, jump: 5 } },
-    { flag: '🇫🇷', name: 'フランス', short: 'FRA', mods: { serve: 5, block: 4 } },
-    { flag: '🇨🇦', name: 'カナダ', short: 'CAN', mods: { spike: 4, receive: 4 } },
-    { flag: '🇦🇷', name: 'アルゼンチン', short: 'ARG', mods: { mental: 5, spike: 4 } }
+    { flag: '🇺🇸', name: 'アメリカ', short: 'USA', mods: { spike: 6, jump: 5 }, top: true, archW: { ace: 3, serve: 2, block: 1, balance: 1 } },
+    { flag: '🇧🇷', name: 'ブラジル', short: 'BRA', mods: { receive: 6, mental: 5 }, top: true, archW: { receive: 3, ace: 2, quick: 1, balance: 1 } },
+    { flag: '🇨🇳', name: '中国', short: 'CHN', mods: { block: 6, jump: 5 }, top: true, archW: { block: 3, quick: 2, balance: 1 } },
+    { flag: '🇮🇹', name: 'イタリア', short: 'ITA', mods: { serve: 6, spike: 4 }, top: true, archW: { serve: 3, quick: 2, ace: 1, balance: 1 } },
+    { flag: '🇷🇸', name: 'セルビア', short: 'SRB', mods: { spike: 5, block: 5 }, top: true, archW: { ace: 3, block: 2, balance: 1 } },
+    { flag: '🇹🇷', name: 'トルコ', short: 'TUR', mods: { spike: 6, jump: 4 }, archW: { ace: 3, serve: 2, balance: 1 } },
+    { flag: '🇳🇱', name: 'オランダ', short: 'NED', mods: { block: 5, serve: 4 }, archW: { block: 3, receive: 1, balance: 1 } },
+    { flag: '🇵🇱', name: 'ポーランド', short: 'POL', mods: { spike: 5, jump: 4 }, archW: { ace: 2, block: 2, balance: 1 } },
+    { flag: '🇩🇪', name: 'ドイツ', short: 'GER', mods: { receive: 4, block: 4 }, archW: { block: 2, balance: 2, receive: 1 } },
+    { flag: '🇰🇷', name: '韓国', short: 'KOR', mods: { receive: 5, serve: 4 }, archW: { receive: 3, quick: 2, balance: 1 } },
+    { flag: '🇹🇭', name: 'タイ', short: 'THA', mods: { receive: 6, toss: 4 }, archW: { receive: 3, quick: 2, balance: 1 } },
+    { flag: '🇩🇴', name: 'ドミニカ共和国', short: 'DOM', mods: { spike: 5, jump: 5 }, archW: { ace: 3, serve: 1, balance: 1 } },
+    { flag: '🇫🇷', name: 'フランス', short: 'FRA', mods: { serve: 5, block: 4 }, archW: { serve: 2, balance: 2, quick: 1 } },
+    { flag: '🇨🇦', name: 'カナダ', short: 'CAN', mods: { spike: 4, receive: 4 }, archW: { balance: 2, ace: 2, receive: 1 } },
+    { flag: '🇦🇷', name: 'アルゼンチン', short: 'ARG', mods: { mental: 5, spike: 4 }, archW: { balance: 2, receive: 2, quick: 1 } }
 ];
+/* ---------- v22：世界大会の国別 名前プール・顔プロファイル ----------
+   世界大会の相手は国内生成と違い、その国の一般的な名前（カタカナ）で生成する。
+   実在選手のフルネームの丸写しにならないよう、ありふれた姓・名の組み合わせにする。
+   顔は既存パレット（FACE.skin 9色・FACE.hair 16色・FACE.eye 12色）の範囲内で、
+   国・地域ごとの重み付けで skin/hair/eye のインデックスを振り直す。 */
+const WORLD_NAMES = {
+    'アメリカ': { last: ['スミス', 'ジョンソン', 'ウィリアムズ', 'ブラウン', 'ジョーンズ', 'ミラー', 'デイビス', 'ガルシア', 'ウィルソン', 'テイラー', 'アンダーソン', 'トーマス', 'ムーア', 'マーティン', 'リー', 'ウォーカー', 'ホール', 'アレン', 'ヤング', 'キング'], first: ['エマ', 'オリビア', 'ソフィア', 'アバ', 'ミア', 'イザベラ', 'ハーパー', 'エラ', 'グレース', 'クロエ', 'リリー', 'ゾーイ', 'ノラ', 'ヘイゼル', 'バイオレット', 'オーロラ', 'ルナ', 'アリア', 'エリー', 'ルビー'] },
+    'ブラジル': { last: ['シルバ', 'サントス', 'オリベイラ', 'ソウザ', 'リマ', 'コスタ', 'ロドリゲス', 'アルメイダ', 'ナシメント', 'アラウジョ', 'フェルナンデス', 'カルバーリョ', 'ゴメス', 'マルティンス', 'ロシャ', 'リベイロ', 'ディアス', 'テイシェイラ', 'モレイラ', 'カバウカンチ'], first: ['マリア', 'アナ', 'ジュリア', 'ベアトリス', 'ラリッサ', 'カミラ', 'フェルナンダ', 'アリーネ', 'ブルーナ', 'ラファエラ', 'レティシア', 'カロリーナ', 'アマンダ', 'タイス', 'ガブリエラ', 'マリアナ', 'ビトリア', 'ラウラ', 'イザベラ', 'エドゥアルダ'] },
+    '中国': { last: ['ワン', 'リー', 'ジャン', 'リュウ', 'チェン', 'ヤン', 'ホアン', 'ジャオ', 'ウー', 'ジョウ', 'シュイ', 'スン', 'フー', 'マー', 'グオ', 'ホー', 'ガオ', 'ルオ', 'ジェン', 'リャン'], first: ['メイ', 'リン', 'シュエ', 'ナー', 'ユエ', 'ジン', 'シン', 'ファン', 'ミン', 'ユン', 'ウェイ', 'チン', 'ルイ', 'ジア', 'イー', 'ニン', 'シャオ', 'ルン', 'フェイ', 'ハン'] },
+    'イタリア': { last: ['ロッシ', 'ルッソ', 'フェラーリ', 'グレコ', 'マリーノ', 'モレッティ', 'コンティ', 'リッツォ', 'マンチーニ', 'ビアンキ', 'ロマーノ', 'コロンボ', 'リッチャルディ', 'マルティーニ', 'ガッロ', 'レオーネ', 'デルーカ', 'サンティ', 'ヴィッラ', 'フォンターナ'], first: ['ジュリア', 'ソフィア', 'マルティーナ', 'キアラ', 'フランチェスカ', 'アレッシア', 'フェデリカ', 'ヴァレンティーナ', 'エレナ', 'シルヴィア', 'ロベルタ', 'カミッラ', 'アンナ', 'マルタ', 'イラリア', 'クリスティーナ', 'エリザ', 'ルチア', 'アウローラ', 'ジーナ'] },
+    'セルビア': { last: ['ペトロビッチ', 'ヨバノビッチ', 'ニコリッチ', 'マルコビッチ', 'イリッチ', 'ストヤノビッチ', 'パブロビッチ', 'ミロバノビッチ', 'コバチェビッチ', 'トドロビッチ', 'サビッチ', 'ラドバノビッチ', 'ステファノビッチ', 'ミトロビッチ', 'ゾリッチ', 'クルニッチ', 'ポポビッチ', 'ジブコビッチ', 'ランコビッチ', 'ブラゴイェビッチ'], first: ['ミリツァ', 'イェレナ', 'アナ', 'マリヤ', 'イバナ', 'ドラガナ', 'スネジャナ', 'タマラ', 'カタリナ', 'ナタリア', 'ミレナ', 'ボヤナ', 'ダニエラ', 'スベトラナ', 'アレクサンドラ', 'ヨバナ', 'マヤ', 'ゾラナ', 'ネベナ', 'サニャ'] },
+    'トルコ': { last: ['ユルマズ', 'カヤ', 'デミル', 'シャヒン', 'チェリキ', 'アイドゥン', 'オズデミル', 'アスラン', 'ドーアン', 'クルト', 'オズトゥルク', 'アバジ', 'カプラン', 'アブジュ', 'コチ', 'テキン', 'ブルト', 'カラ', 'セリン', 'アクソイ'], first: ['ゼイナブ', 'エリフ', 'メルベ', 'ハンデ', 'セリン', 'デリア', 'アスリ', 'ギゼム', 'ジェムレ', 'トゥーバ', 'ベギュム', 'ハティジェ', 'ファトマ', 'アイシェ', 'エスラ', 'ピナール', 'スデ', 'ディララ', 'ヤセミン', 'エジェ'] },
+    'オランダ': { last: ['ヤンセン', 'デヨング', 'デフリース', 'バッカー', 'ファンダイク', 'スミット', 'デブール', 'メイエル', 'デグラーフ', 'ボス', 'フォス', 'コック', 'ファンデルメール', 'ホーフト', 'ペーテルス', 'ヘンドリクス', 'ファンローン', 'デウィット', 'フェルメール', 'ムルダー'], first: ['アンネ', 'サンネ', 'リーケ', 'フェムケ', 'イリス', 'ユリア', 'テス', 'サラ', 'ロッテ', 'エバ', 'ノール', 'フィーネ', 'マイケ', 'ニーンケ', 'ダフネ', 'キム', 'ラウラ', 'マノン', 'ブリット', 'イェット'] },
+    'ポーランド': { last: ['コワルスカ', 'ノバク', 'ヴィシニェフスカ', 'ヴォイチェホフスカ', 'コワルチク', 'レバンドフスカ', 'ズィエリンスカ', 'シマンスカ', 'ヴォズニアク', 'ヤンコフスカ', 'コザック', 'クラウチク', 'カチュマレク', 'マズル', 'ミハラク', 'パブロフスカ', 'シコラ', 'バラノフスカ', 'オストロフスカ', 'ピオトロフスカ'], first: ['アグニェシュカ', 'カタジナ', 'マルゴジャータ', 'アンナ', 'エバ', 'マグダレナ', 'ヨアンナ', 'ナタリア', 'カロリーナ', 'アレクサンドラ', 'モニカ', 'ユスティナ', 'パウリーナ', 'ドミニカ', 'ヴェロニカ', 'クラウディア', 'マルタ', 'アリツィア', 'ズザンナ', 'オリビア'] },
+    'ドイツ': { last: ['ミュラー', 'シュミット', 'シュナイダー', 'フィッシャー', 'ヴェーバー', 'マイヤー', 'ワーグナー', 'ベッカー', 'ホフマン', 'シュルツ', 'コッホ', 'バウアー', 'リヒター', 'クライン', 'ヴォルフ', 'シュレーダー', 'ノイマン', 'シュヴァルツ', 'ツィンマーマン', 'クリューガー'], first: ['レア', 'ハンナ', 'レオニー', 'ルイーザ', 'マリー', 'ソフィー', 'エミリア', 'ミア', 'エラ', 'リナ', 'アンナ', 'クララ', 'フリーダ', 'イーダ', 'マチルダ', 'グレタ', 'ヨハンナ', 'マルタ', 'ヘレナ', 'カーラ'] },
+    '韓国': { last: ['キム', 'イ', 'パク', 'チェ', 'チョン', 'チョ', 'ユン', 'チャン', 'イム', 'カン', 'オ', 'ソ', 'シン', 'クォン', 'ホワン', 'アン', 'ヤン', 'ソン', 'ペ', 'ハン'], first: ['ジヨン', 'ソヨン', 'ミンジ', 'ハウン', 'ジウ', 'スア', 'ユナ', 'チェウォン', 'ダヒョン', 'イェジ', 'ソヒ', 'ジミン', 'ユジン', 'ハリン', 'セヨン', 'ナヨン', 'ジア', 'ウンビ', 'ヒョジン', 'ミヨン'] },
+    'タイ': { last: ['ジャンタラ', 'スワンナ', 'ペットチャイ', 'チャイヤ', 'ラッタナ', 'ソムチャイ', 'ナロン', 'プラサー', 'ウィチャイ', 'カンチャナ', 'スリヤ', 'マニー', 'タワン', 'チャナ', 'ポーン', 'アヌチャ', 'サクダ', 'ブンロート', 'ケーオ', 'シリポーン'], first: ['アンパ', 'スダー', 'ワニット', 'パンニカ', 'スパトラ', 'ニサー', 'カモン', 'ラダー', 'パウィナー', 'スニサー', 'タナパット', 'ピヤダー', 'ワラパー', 'ナッタニチャ', 'スワンナ', 'ジャリヤ', 'カンヤー', 'プリヤ', 'ラッタナー', 'マンタナー'] },
+    'ドミニカ共和国': { last: ['マルティネス', 'ロドリゲス', 'ペレス', 'サンチェス', 'ラミレス', 'トーレス', 'フローレス', 'リベラ', 'バスケス', 'レイエス', 'ヒメネス', 'モラレス', 'カスティーヨ', 'オルティス', 'ヌニェス', 'メンデス', 'グスマン', 'フェルナンデス', 'コロン', 'カブレラ'], first: ['マリア', 'カルメン', 'アナ', 'ロサ', 'フアナ', 'メルセデス', 'ラモナ', 'ヨセリン', 'カロリーナ', 'エリザベス', 'マリベル', 'ダヤナ', 'アンヘラ', 'ルス', 'ミラグロス', 'サンドラ', 'パトリシア', 'カリーナ', 'ステファニー', 'ジェニファー'] },
+    'フランス': { last: ['マルタン', 'ベルナール', 'デュボワ', 'トマ', 'ロベール', 'リシャール', 'プティ', 'デュラン', 'ルロワ', 'モロー', 'シモン', 'ローラン', 'ルフェーブル', 'ミシェル', 'ガルシア', 'ダヴィド', 'ベルトラン', 'ルー', 'フォル', 'メルシエ'], first: ['カミーユ', 'レア', 'マノン', 'クロエ', 'エマ', 'ジャド', 'ルイーズ', 'アリス', 'アンナ', 'リナ', 'ミア', 'アンブル', 'ローズ', 'マルゴー', 'エバ', 'ノラ', 'マエリス', 'リュシー', 'オセアン', 'アデール'] },
+    'カナダ': { last: ['スミス', 'ブラウン', 'トレンブレイ', 'ガニョン', 'ロワ', 'コテ', 'ブシャール', 'ガウティエ', 'モラン', 'ラクロワ', 'フォルティエ', 'オウレット', 'ベランジェ', 'レヴェック', 'ベルジェロン', 'ヘンダーソン', 'ウィルソン', 'テイラー', 'キャンベル', 'ジョンソン'], first: ['エマ', 'オリビア', 'シャーロット', 'アメリア', 'ソフィア', 'アバ', 'ミア', 'エラ', 'ハーパー', 'カミラ', 'アリア', 'エミリー', 'マディソン', 'アビゲイル', 'エリザベス', 'クロエ', 'レイラ', 'ノラ', 'ヘイゼル', 'バイオレット'] },
+    'アルゼンチン': { last: ['ゴンサレス', 'ロドリゲス', 'ゴメス', 'フェルナンデス', 'ロペス', 'マルティネス', 'ガルシア', 'ペレス', 'サンチェス', 'ロメロ', 'トーレス', 'フローレス', 'リベロ', 'バスケス', 'カスティーヨ', 'ヒメネス', 'モラレス', 'カブレラ', 'オルティス', 'ヌニェス'], first: ['マリア', 'フアナ', 'アナ', 'カルメン', 'ロサ', 'ルシア', 'ソフィア', 'マルティーナ', 'バレンティーナ', 'カミラ', 'フリエタ', 'カタリーナ', 'フロレンシア', 'アグスティーナ', 'ミラグロス', 'アスル', 'デルフィーナ', 'エミリア', 'レナータ', 'パロマ'] }
+};
+/* 顔プロファイル：[skin重み(9), hair重み(16), eye重み(12)]。パレットのインデックス順に対応。
+   hair: 0黒 1こげ茶 2茶 3明るい茶 4亜麻色 5紫黒 6紺黒 7赤茶 8金茶 9紫 10明るい金 11銀 12ピンク 13オレンジ 14深緑 15プラチナ
+   eye: 0こげ茶 1青 2緑 3紫 4琥珀 5黒 6ローズ 7水色 8ピンク 9黄緑 10濃ピンク 11グレー青 */
+const WORLD_FACE_PROFILE = {
+    'アメリカ': { skin: [26, 28, 16, 10, 8, 6, 3, 2, 1], hair: [12, 16, 18, 14, 12, 0, 0, 6, 10, 0, 8, 0, 0, 0, 0, 4], eye: [32, 24, 14, 0, 10, 8, 0, 0, 0, 0, 0, 12] },
+    'ブラジル': { skin: [14, 18, 16, 14, 12, 12, 7, 4, 3], hair: [30, 22, 16, 8, 6, 0, 0, 5, 6, 0, 4, 0, 0, 0, 0, 3], eye: [52, 6, 10, 0, 12, 14, 0, 0, 0, 0, 0, 6] },
+    '中国': { skin: [30, 34, 20, 8, 6, 2, 0, 0, 0], hair: [55, 20, 15, 5, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0], eye: [55, 1, 1, 0, 6, 35, 0, 0, 0, 0, 0, 2] },
+    'イタリア': { skin: [28, 34, 20, 10, 6, 2, 0, 0, 0], hair: [22, 26, 22, 10, 6, 0, 0, 6, 5, 0, 3, 0, 0, 0, 0, 0], eye: [45, 9, 12, 0, 14, 12, 0, 0, 0, 0, 0, 8] },
+    'セルビア': { skin: [40, 36, 14, 5, 4, 1, 0, 0, 0], hair: [8, 18, 20, 16, 12, 0, 0, 6, 12, 0, 8, 0, 0, 0, 0, 0], eye: [30, 22, 14, 0, 10, 6, 0, 4, 0, 0, 0, 14] },
+    'トルコ': { skin: [30, 32, 20, 10, 6, 2, 0, 0, 0], hair: [26, 26, 20, 10, 5, 0, 0, 6, 4, 0, 3, 0, 0, 0, 0, 0], eye: [48, 8, 13, 0, 14, 10, 0, 0, 0, 0, 0, 7] },
+    'オランダ': { skin: [45, 35, 12, 4, 3, 1, 0, 0, 0], hair: [3, 8, 10, 14, 16, 0, 0, 3, 18, 0, 18, 0, 0, 0, 0, 10], eye: [18, 30, 15, 0, 6, 3, 0, 8, 0, 0, 0, 20] },
+    'ポーランド': { skin: [45, 35, 12, 4, 3, 1, 0, 0, 0], hair: [3, 8, 12, 14, 16, 0, 0, 3, 16, 0, 18, 0, 0, 0, 0, 10], eye: [20, 30, 14, 0, 6, 3, 0, 7, 0, 0, 0, 20] },
+    'ドイツ': { skin: [45, 35, 12, 4, 3, 1, 0, 0, 0], hair: [4, 9, 12, 14, 15, 0, 0, 3, 16, 0, 17, 0, 0, 0, 0, 10], eye: [20, 29, 15, 0, 6, 3, 0, 7, 0, 0, 0, 20] },
+    '韓国': { skin: [30, 34, 20, 8, 6, 2, 0, 0, 0], hair: [55, 20, 15, 5, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0], eye: [55, 1, 1, 0, 6, 35, 0, 0, 0, 0, 0, 2] },
+    'タイ': { skin: [8, 16, 26, 22, 16, 9, 3, 0, 0], hair: [55, 22, 13, 5, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0], eye: [58, 0, 0, 0, 6, 34, 0, 0, 0, 0, 0, 2] },
+    'ドミニカ共和国': { skin: [4, 8, 12, 16, 16, 20, 12, 7, 5], hair: [45, 25, 14, 6, 0, 0, 0, 5, 3, 0, 2, 0, 0, 0, 0, 0], eye: [62, 2, 4, 0, 10, 22, 0, 0, 0, 0, 0, 0] },
+    'フランス': { skin: [30, 30, 16, 9, 7, 4, 2, 1, 1], hair: [14, 18, 20, 14, 10, 0, 0, 6, 8, 0, 6, 0, 0, 0, 0, 4], eye: [34, 20, 14, 0, 12, 8, 0, 0, 0, 0, 0, 12] },
+    'カナダ': { skin: [26, 28, 16, 10, 8, 6, 3, 2, 1], hair: [12, 16, 18, 14, 12, 0, 0, 6, 10, 0, 8, 0, 0, 0, 0, 4], eye: [32, 24, 14, 0, 10, 8, 0, 0, 0, 0, 0, 12] },
+    'アルゼンチン': { skin: [34, 34, 18, 8, 5, 1, 0, 0, 0], hair: [14, 22, 24, 14, 10, 0, 0, 3, 8, 0, 5, 0, 0, 0, 0, 0], eye: [40, 16, 16, 0, 12, 6, 0, 0, 0, 0, 0, 10] }
+};
+/* 世界大会の選手に、その国の名前と顔プロファイルを適用する（国内生成には使わない） */
+function applyWorldIdentity(players, country) {
+    const pool = WORLD_NAMES[country], prof = WORLD_FACE_PROFILE[country];
+    if (!pool)
+        return;
+    const used = new Set();
+    for (const p of players) {
+        let nm = null, tries = 0;
+        do {
+            nm = { last: pick(pool.last), first: pick(pool.first) };
+        } while (used.has(nm.last + ' ' + nm.first) && ++tries < 30);
+        used.add(nm.last + ' ' + nm.first);
+        p.last = nm.last;
+        p.first = nm.first;
+        if (prof && p.face) {
+            p.face.skin = wpick(FACE.skin.map((_, i) => i), prof.skin);
+            p.face.hair = wpick(FACE.hair.map((_, i) => i), prof.hair);
+            p.face.eye = wpick(FACE.eye.map((_, i) => i), prof.eye);
+        }
+    }
+}
 function genWorldTeams(s) {
     const myPow = myPower(s);
     const out = [];
     for (const c of WORLD_COUNTRIES) {
         const mult = c.top ? 122 : 116;
         const str = Math.round(clamp(Math.round(myPow * mult / 100) - 6, 66, 90) * diffMult(s));
-        const players = genRivalRoster(str, s);
+        /* v22：型は国らしい重みで割り当て、国別補正と併用する。名前・顔も国別にする */
+        const arch = pickTeamArch(c.archW);
+        const players = genRivalRoster(str, s, arch);
         for (const pl of players)
             for (const k in c.mods)
                 pl.stats[k] = clamp((pl.stats[k] || 0) + c.mods[k], 1, 95);
         for (const pl of players)
             rivalSkills(pl, diffSkill(s));
-        out.push({ id: uid('w'), name: `${c.flag} ${c.name}代表`, short: c.short, country: c.name, flag: c.flag, tier: c.top ? 'elite' : 'strong', nat: 'world', str,
+        if (arch && arch !== 'balance')
+            applyArchSkills(players, arch, diffSkill(s)); // rivalSkills の振り直しで消えた型バイアスを付け直す
+        applyWorldIdentity(players, c.name);
+        out.push({ id: uid('w'), name: `${c.flag} ${c.name}代表`, short: c.short, country: c.name, flag: c.flag, tier: c.top ? 'elite' : 'strong', nat: 'world', str, arch,
             nick: '', players, color: pick(OPP_COLORS) });
     }
     return out;
@@ -2626,16 +2876,19 @@ function fabTourMatchStats(s, t, aId, bId, scoreStr) {
         let left = total;
         return players.map((p, i) => { const v = i === players.length - 1 ? left : Math.min(left, Math.round(total * ws[i] / sum)); left -= v; return v; });
     };
-    const KW = { OH: 3.2, OP: 3.4, MB: 1.7, S: 0.25, L: 0.02 }, BW = { OH: 1.0, OP: 1.1, MB: 3.4, S: 0.7, L: 0 }, DW = { OH: 1.4, OP: 0.9, MB: 0.5, S: 1.1, L: 3.4 };
+    /* v22：配分量・ウェイトを自校戦の実スタッツ（m.an）の1試合あたり水準に較正。
+       旧版はエース過大（実2.2→推定3.5）・ディグ過小（実34.3→推定24.0）・
+       レセプション過大（実約25.7→推定約52、セッターが吸いすぎ）だった */
+    const KW = { OH: 3.1, OP: 3.7, MB: 1.7, S: 0.05, L: 0.02 }, BW = { OH: 0.2, OP: 1.2, MB: 3.8, S: 0.25, L: 0 }, DW = { OH: 1.4, OP: 0.9, MB: 0.35, S: 1.1, L: 4.0 }, RW = { OH: 2.4, OP: 0.5, MB: 0.2, S: 0.3, L: 3.6 };
     [[A, aId, (parts[0] || 0) > (parts[1] || 0)], [B, bId, (parts[1] || 0) > (parts[0] || 0)]].forEach(([team, tid, won]) => {
         const starters = team.players.slice(0, 7);
         if (!starters.length)
             return;
-        const kd = dist(starters, Math.round(sets * rf2(11, 14) * (won ? 1 : 0.85)), p => (KW[p.pos] || 1) * (0.7 + (p.stats.spike || 50) / 100));
-        const bd = dist(starters, Math.round(sets * rf2(1.5, 3.5)), p => (BW[p.pos] || 0.3) * (0.7 + (p.stats.block || 50) / 100));
-        const ad = dist(starters, Math.round(sets * rf2(0.8, 2.2)), p => (p.pos === 'L' ? 0.05 : 1) * (0.7 + (p.stats.serve || 50) / 100));
-        const dd = dist(starters, Math.round(sets * rf2(7, 11)), p => (DW[p.pos] || 1) * (0.7 + (p.stats.receive || 50) / 100));
-        const rd = dist(starters, Math.round(sets * rf2(18, 24)), p => (DW[p.pos] || 1) * (0.7 + (p.stats.receive || 50) / 100));
+        const kd = dist(starters, Math.round(sets * rf2(12, 15) * (won ? 1 : 0.85)), p => (KW[p.pos] || 1) * (0.7 + (p.stats.spike || 50) / 100));
+        const bd = dist(starters, Math.round(sets * rf2(2.2, 4.0)), p => (BW[p.pos] || 0.3) * (0.7 + (p.stats.block || 50) / 100));
+        const ad = dist(starters, Math.round(sets * rf2(0.4, 1.3)), p => (p.pos === 'L' ? 0.05 : 1) * (0.7 + (p.stats.serve || 50) / 100));
+        const dd = dist(starters, Math.round(sets * rf2(11, 16)), p => (DW[p.pos] || 1) * (0.7 + (p.stats.receive || 50) / 100));
+        const rd = dist(starters, Math.round(sets * rf2(9, 13)), p => (RW[p.pos] || 1) * (0.7 + (p.stats.receive || 50) / 100));
         starters.forEach((p, i) => {
             const e = tourStatsOf(t, tid, teamLabel(team), p, false);
             e.g++;
@@ -2660,20 +2913,62 @@ function computeTourAwards(s, t) {
     const es = Object.values(t.tstats || {}).filter(e => e.g >= 1);
     if (!es.length)
         return null;
-    const teamKills = {};
-    for (const e of es)
+    const teamKills = {}, teamGames = {};
+    for (const e of es) {
         teamKills[e.teamId] = (teamKills[e.teamId] || 0) + e.kill;
-    const byPos = pos => es.filter(e => e.pos === pos).sort((x, y) => tourAwardPosScore(y, teamKills[y.teamId] || 0) - tourAwardPosScore(x, teamKills[x.teamId] || 0));
-    const best6 = [];
-    const take = (pos, n) => { for (const e of byPos(pos).slice(0, n)) best6.push({ slot: pos, e }); };
-    take('S', 1); take('OH', 2); take('MB', 2); take('OP', 1);
-    if (best6.length < 6) {
-        const chosen = new Set(best6.map(b => b.e));
-        const rest = es.filter(e => e.pos !== 'L' && !chosen.has(e)).sort((x, y) => tourAwardGeneral(y) - tourAwardGeneral(x));
-        while (best6.length < 6 && rest.length) { const e = rest.shift(); best6.push({ slot: e.pos, e }); }
+        teamGames[e.teamId] = Math.max(teamGames[e.teamId] || 0, e.g);
     }
-    const libero = byPos('L')[0] || null;
-    const rookies = es.filter(e => e.grade === 1).sort((x, y) => tourAwardGeneral(y) - tourAwardGeneral(x));
+    /* v22：選考スコアは「総量」と「1試合あたりの率」のブレンドにする。
+       率側は大会中の最大試合数 G でスケールし直して総量と同じ土俵で比べる。
+       試合数が多い（決勝まで勝ち上がった）だけで総量が膨らみ、ベスト6が
+       決勝の相手だけで固まる問題への対策 */
+    const G = Math.max(...es.map(e => e.g));
+    const rateOf = e => { const r = { pos: e.pos }; for (const k of ['kill', 'blk', 'ace', 'dig', 'rcv', 'rA', 'err']) r[k] = e[k] / Math.max(1, e.g); return r; };
+    const teamKillsPerGame = {};
+    for (const id in teamKills)
+        teamKillsPerGame[id] = teamKills[id] / Math.max(1, teamGames[id] || 1);
+    const posScore = e => tourAwardPosScore(e, teamKills[e.teamId] || 0) * 0.5
+        + tourAwardPosScore(rateOf(e), teamKillsPerGame[e.teamId] || 0) * G * 0.5;
+    const genScore = e => tourAwardGeneral(e) * 0.5 + tourAwardGeneral(rateOf(e)) * G * 0.5;
+    const byPos = pos => es.filter(e => e.pos === pos).sort((x, y) => posScore(y) - posScore(x));
+    /* v22：ベスト6＋ベストリベロ合計で同一チーム最大3人まで（新人王は対象外）。
+       上限で埋まらなかった枠は上限を外した次点で、それでも足りなければ
+       従来どおり総合スコアの次点（リベロ以外）で埋める */
+    const AWARD_TEAM_CAP = 3;
+    const teamCount = {};
+    const cnt = e => teamCount[e.teamId] || 0;
+    const chosen = new Set();
+    const best6 = [];
+    const take = (pos, n, respectCap) => {
+        let got = 0;
+        for (const e of byPos(pos)) {
+            if (got >= n)
+                break;
+            if (chosen.has(e))
+                continue;
+            if (respectCap && cnt(e) >= AWARD_TEAM_CAP)
+                continue;
+            best6.push({ slot: pos, e }); chosen.add(e); teamCount[e.teamId] = cnt(e) + 1; got++;
+        }
+        return got;
+    };
+    const need = [['S', 1], ['OH', 2], ['MB', 2], ['OP', 1]];
+    for (const [pos, n] of need)
+        take(pos, n, true);
+    for (const [pos, n] of need) {
+        const have = best6.filter(b => b.slot === pos).length;
+        if (have < n)
+            take(pos, n - have, false);
+    }
+    if (best6.length < 6) {
+        const rest = es.filter(e => e.pos !== 'L' && !chosen.has(e)).sort((x, y) => genScore(y) - genScore(x));
+        while (best6.length < 6 && rest.length) { const e = rest.shift(); best6.push({ slot: e.pos, e }); chosen.add(e); teamCount[e.teamId] = cnt(e) + 1; }
+    }
+    let libero = null;
+    for (const e of byPos('L')) { if (cnt(e) < AWARD_TEAM_CAP) { libero = e; break; } }
+    if (!libero)
+        libero = byPos('L')[0] || null;
+    const rookies = es.filter(e => e.grade === 1).sort((x, y) => genScore(y) - genScore(x));
     return { best6, libero, rookie: rookies[0] || null };
 }
 /* 自校の受賞を選手の受賞歴に残し、評判ボーナス（受賞1件+1・大会あたり最大+3）を返す */
@@ -8266,6 +8561,35 @@ function winEstimate(myPow, oppPow, bo) {
     return 1 / (1 + Math.exp(-(myPow - oppPow) / k));
 }
 function winLabel(p) { return p >= 0.8 ? '優勢' : p >= 0.6 ? 'やや優勢' : p >= 0.4 ? '互角' : p >= 0.2 ? 'やや劣勢' : '劣勢'; }
+
+/* ---------- v22：試合前のアナリスト分析 ----------
+   相手の型（アーキタイプ）と実際のロスターから導く。文章だけの飾りにはしない。
+   detailed=true（偵察済み or ビデオ分析セットあり）のときだけ、要注意選手の
+   主な能力値と特殊能力まで出す。概要版は型・要注意選手の名前と武器の種別まで。 */
+function analystInfo(opp, detailed) {
+    const arch = TEAM_ARCH[teamArchOf(opp)] || TEAM_ARCH.balance;
+    const st = (opp.players || []).slice(0, 7);
+    if (!st.length)
+        return { arch: teamArchOf(opp), archName: arch.name, desc: arch.desc, hint: arch.hint, keys: [], detailed: !!detailed };
+    const keys = archKeyPlayers(st, teamArchOf(opp)).map(({ p, role }) => {
+        /* 武器の種別：型のカテゴリ優先（なければポジション由来） */
+        const cat = arch.cat;
+        let wk = 'spike';
+        if (cat === 'tos') wk = 'toss';
+        else if (cat === 'blk') wk = 'block';
+        else if (cat === 'def') wk = 'receive';
+        else if (cat === 'srv') wk = 'serve';
+        else if (p.pos === 'L') wk = 'receive';
+        else if (p.pos === 'S') wk = 'toss';
+        return {
+            name: p.name || `${p.last || ''} ${p.first || ''}`.trim(), pos: p.pos, role,
+            weapon: STAT_JP[wk],
+            value: p.stats ? Math.round(p.stats[wk] || 0) : null,
+            skills: (p.skills || []).map(id => skillInfo(id).name),
+        };
+    });
+    return { arch: teamArchOf(opp), archName: arch.name, desc: arch.desc, hint: arch.hint, keys, detailed: !!detailed };
+}
 let S = null;
 const ui = { screen: 'title', sel: null, mq: [], match: null, oldSaveFound: false };
 /* ---------- v13: 表示まわりの設定（PREFS） ----------
@@ -10182,7 +10506,7 @@ function renderPanel() {
     const courtHtml = `<h3>🏐 コート（${esc(sd.short)}）</h3><div class="sm">🔄 ローテーション${(sd.rotN || 0) + 1}（セッター：${court[0] && court.find(e => e.role === 'S') ? zoneName[court.findIndex(e => e.role === 'S')] : '—'}）</div><table><tr><th>位置</th><th>名前</th><th>役</th><th>体力</th><th>調子</th><th></th></tr>${court.map((e, i) => `<tr><td class="sm">${zoneName[i]}</td><td title="${esc((e.p.skills || []).map(s => skillInfo(s).name).join('、'))}">${S.players.includes(e.p) ? avatar(e.p, 22) : ''} ${esc(e.nm)} ${skCountHtml(e.p)}</td><td>${e.role}${APT_MARK[aptOf(e.p, e.role)]}</td><td>${stamBar(e.stam)}</td><td>${COND_ICON[e.p.condition]}</td><td><button class="mini ${mt.subFor === e.p.id ? 'on' : 'sub'}" ${dis} onclick="openSubFor('${e.p.id}')">交代</button></td></tr>`).join('')}</table>
   <div class="sm">ベンチ：${bench.length ? bench.map(e => `${esc(e.nm)}(${e.p.pos} ${Math.round(e.stam)})`).join('、') : 'なし'}</div>
   <h3>🔍 相手</h3><div class="sm">作戦：${TACTICS[m.tac[1]].name} ／ タイムアウト残り${m.to[1]} ／ 交代残り${MAX_SUBS - m.subs[1]}</div>
-  ${hasFac(S, 'video') || m.recon ? `<div class="sm">${m.recon ? '🔭 偵察済み（チーム能力+2%）' : '📹 ビデオ分析'}：</div><table>${getCourt(opp, m.serving === 1).map(e => `<tr><td>${esc(e.nm)}</td><td>${e.role}</td><td style="white-space:normal;text-align:left">${skTagsHtml(e.p, true)}</td></tr>`).join('')}</table>` : '<div class="sm">（ビデオ分析セットがあると相手の特殊能力が見えます）</div>'}`;
+  ${hasFac(S, 'video') || m.recon ? `<div class="sm">${m.recon ? '🔭 偵察済み（チーム能力+2%）' : '📹 ビデオ分析'}：相手の型は「${(TEAM_ARCH[teamArchOf(m.opp)] || TEAM_ARCH.balance).name}」</div><table>${getCourt(opp, m.serving === 1).map(e => `<tr><td>${esc(e.nm)}</td><td>${e.role}</td><td style="white-space:normal;text-align:left">${skTagsHtml(e.p, true)}</td></tr>`).join('')}</table>` : '<div class="sm">（ビデオ分析セットがあると相手の特殊能力が見えます）</div>'}`;
     if (tab === 'court') { box.innerHTML = tabs + `<div class="sm">交代残り <b>${MAX_SUBS - m.subs[0]}</b>/6</div>${pairsHtml(m, sd)}` + (mt.subFor && !m.done ? subChooserHtml(m, sd) : '') + courtHtml; return; }
     let h = tabs + `<h3>📣 作戦（現在：${TACTICS[m.tac[0]].name}）</h3><div class="tacs">${Object.entries(TACTICS).map(([k, v]) => `<button class="${m.tac[0] === k ? 'on' : 'sub'}" ${dis} title="${v.desc}" onclick="setTac('${k}')">${v.name}</button>`).join('')}</div>
   <div class="sm">${TACTICS[m.tac[0]].desc}</div>
@@ -11372,6 +11696,7 @@ function viewPrematch() {
     const mp = lineupPower(lu), op = rivalPower(opp), pr = winEstimate(mp, op, c.bo);
     const a = teamProfile(lu), b = teamProfile(olu);
     const seeSk = c.recon || hasFac(S, 'video');
+    const analyst = analystInfo(opp, seeSk);
     const bar = (x, y) => { const t = x + y || 1; return `<div class="vs"><i style="width:${x / t * 100}%"></i></div>`; };
     const pool = activePlayers(S).filter(p => !c.filt || c.filt(p));
     const star = [...SLOTS.map(sl => olu[sl]).filter(Boolean)].sort((x, y) => overall(y) - overall(x))[0];
@@ -11380,7 +11705,7 @@ function viewPrematch() {
   <div class="row pmvs" style="align-items:center;justify-content:center;gap:24px">
    <div style="text-align:center"><div class="tm" style="background:${teamColor()};padding:6px 14px;border:3px solid #000">${esc(S.school.name)}</div><div style="font-size:28px">${rk(mp)} ${mp.toFixed(1)}</div></div>
    <div style="text-align:center"><div style="font-size:14px">勝利の見込み</div><div style="font-size:40px;font-weight:bold;color:#ffe35a">${pr < 0.005 ? "1%未満" : pr > 0.995 ? "99%以上" : Math.round(pr * 100) + "%"}</div><div style="font-size:18px">${winLabel(pr)}</div></div>
-   <div style="text-align:center"><div class="tm" style="background:#555;padding:6px 14px;border:3px solid #000">${esc(teamLabel(opp))}</div><div style="font-size:28px">${rk(op)} ${op.toFixed(1)}</div></div>
+   <div style="text-align:center"><div class="tm" style="background:#555;padding:6px 14px;border:3px solid #000">${esc(teamLabel(opp))}</div><div style="font-size:28px">${rk(op)} ${op.toFixed(1)}</div><div style="font-size:13px">型：${analyst.archName}</div></div>
   </div><p style="text-align:center;margin:6px 0 0">🗞 ${comment}</p>${bondTextOf(S, lu) ? `<p style="text-align:center">💞 ${esc(bondTextOf(S, lu))}（チーム能力+${bondBonusPct(S, lu)}%）</p>` : ''}</div>
   ${c.tour && S.tour ? `<details open class="px"><summary>🏆 トーナメント表（${esc(S.tour.name)}）</summary>${bracketHtml(S, S.tour)}<p class="sm">黄色が自校の試合。勝ち上がりと、負けた相手のその後の結果もここで追えます。</p></details>` : ''}
   <div class="row">
@@ -11389,7 +11714,12 @@ function viewPrematch() {
    <p class="sm">バーが左に長いほど自校が有利。勝利の見込みはチーム力の差から出した目安で、調子・体力・作戦・特殊能力で変わります。</p>
    <h3>🔍 相手のスタメン ${star ? `（注目：${esc(star.last)}）` : ''}</h3><table><tr><th>枠</th><th>名前</th><th>学年</th><th>評価</th><th style="text-align:left">特殊能力</th></tr>
    ${SLOTS.map(sl => { const p = olu[sl]; if (!p)
-        return ''; return `<tr${p === star ? ' class="me"' : ''}><td>${sl}</td><td>${esc(p.last)}</td><td>${p.grade}</td><td>${rk(posValue(p, SLOT_ROLE[sl]))}</td><td style="text-align:left;white-space:normal">${seeSk ? skTagsHtml(p, true) : '<span class="sm">？（偵察かビデオセットで判明）</span>'}</td></tr>`; }).join('')}</table></div>
+        return ''; return `<tr${p === star ? ' class="me"' : ''}><td>${sl}</td><td>${esc(p.last)}</td><td>${p.grade}</td><td>${rk(posValue(p, SLOT_ROLE[sl]))}</td><td style="text-align:left;white-space:normal">${seeSk ? skTagsHtml(p, true) : '<span class="sm">？（偵察かビデオセットで判明）</span>'}</td></tr>`; }).join('')}</table>
+   <h3>🔬 アナリスト分析：${analyst.archName}</h3>
+   <p class="sm">${analyst.desc}</p>
+   ${analyst.keys.length ? `<p class="sm"><b>要注意選手</b><br>${analyst.keys.map(k => `${esc(k.name)}（${esc(k.pos)}・${k.role}）${analyst.detailed ? `：${k.weapon} ${k.value}${k.skills.length ? `／特能：${k.skills.join('・')}` : ''}` : `：武器は${k.weapon}`}`).join('<br>')}</p>` : ''}
+   <p class="sm">💡 ${analyst.hint}</p>
+   ${analyst.detailed ? '' : '<p class="sm">※偵察するか「ビデオセット」を用意すると、要注意選手の能力・特殊能力まで分かる</p>'}</div>
   <div class="col px"><h2>📋 自校のオーダー</h2>
    <p>⚡ 自動編成：${Object.entries(LINEUP_MODES).map(([k, v]) => `<button class="mini ${(S.lineupMode || 'auto') === k ? 'on' : 'sub'}" title="${v.desc}" onclick="preAuto('${k}')">${v.name}</button>`).join('')}</p>
    <table><tr><th>枠</th><th></th><th>選手</th><th>評価</th><th>調子</th><th>体力</th></tr>
